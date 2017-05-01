@@ -30,7 +30,7 @@ class Votes extends Scanner {
         let opBody = historyEntry[1].op[1];
         opBody.time = time; //Для сортировки
 
-        log.trace("\upvote time " + time);
+        log.trace("\tupvote time " + time);
         //Учитывать только апвоты с последней выплаты
         if(minTime < time && op == "vote" && opBody.voter = this.userid) {
             log.debug("\tfound upvote " + opBody.author + "/" + opBody.permlink);
