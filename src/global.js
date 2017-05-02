@@ -24,7 +24,8 @@ module.exports.settings = {
     golos_websocket : "wss://ws.golos.io",
     broadcast : false,
     dobrobot : "testuser",
-    dobrobotActiveKey : "5df47f4f4f"s
+    dobrobotActiveKey : "5df47f4f4f",
+    blacklist : ["golos.loto", "lotobot"]
 };
 
 

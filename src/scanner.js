@@ -13,18 +13,16 @@ class Scanner {
 
 class Votes extends Scanner {
     
-    constructor(userid, balance) {
+    constructor(userid, minTime) {
         super();
         this.userid = userid;
-        this.balance = balance;
+        this.minTime = minTime;
         this.votes = [];
+        log.debug("Search for votes of " + this.userid + " since " + this.minTime);
     }
     
     process(historyEntry) {
         //Последяя выплата
-        let minTime = Math.max(this.balance.GOLOS.minusId, this.balance.GB.minusId);
-        log.trace("last payout " + minTime);
-
         let time =  Date.parse(historyEntry[1].timestamp);
         let op = historyEntry[1].op[0];
         let opBody = historyEntry[1].op[1];
@@ -32,12 +30,12 @@ class Votes extends Scanner {
 
         log.trace("\tupvote time " + time);
         //Учитывать только апвоты с последней выплаты
-        if(minTime < time && op == "vote" && opBody.voter = this.userid) {
+        if(this.minTime < time && op == "vote" && opBody.voter = this.userid) {
             log.debug("\tfound upvote " + opBody.author + "/" + opBody.permlink);
             this.votes.push(opBody);
         }
         
-        return minTime >= time; //Пошли уже старые записи, дальше сканировать историю нет смысла
+        return this.minTime > time; //Пошли уже старые записи, дальше сканировать историю нет смысла
     }    
 }
 
