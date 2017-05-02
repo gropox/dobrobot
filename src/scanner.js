@@ -30,7 +30,7 @@ class Votes extends Scanner {
 
         log.trace("\tupvote time " + time);
         //Учитывать только апвоты с последней выплаты
-        if(this.minTime < time && op == "vote" && opBody.voter = this.userid) {
+        if(this.minTime < time && op == "vote" && opBody.voter == this.userid) {
             log.debug("\tfound upvote " + opBody.author + "/" + opBody.permlink);
             this.votes.push(opBody);
         }
@@ -45,46 +45,40 @@ class Balances extends Scanner {
         this.balances = {};
     }
     
-    plus(userid, amount, currency, id, opt) {
+    plus(userid, amount, currency, time, opt) {
         if(this.balances[userid]) {
         } else {
             this.balances[userid] = {
+                minTime: 0,
                 GOLOS : {
                     amount : 0, 
-                    opt : 1, 
-                    id : 0,
-                    payoutTime : 0
+                    opt : 1
                 },
                 GBG : {
                     amount : 0, 
-                    opt : 1, 
-                    id : 0,
-                    payoutTime : 0
+                    opt : 1
+                }
             };
         }
         
         this.balances[userid][currency].amount += amount;
 
-        if(this.balances[userid][currency].id < id) {
-            this.balances[userid][currency].id = id;
+        if(this.balances[userid].minTime < time) {
+            this.balances[userid].minTime = time;
             // Если в memo входящего переводы было число, 
             // считаем его как  amount per vote
-            if(typeof opt == "number") {
+            if(opt) {
                 this.balances[userid][currency].opt = opt;
             }
         }
     }
     
     minus(userid, amount, currency, payoutTime) {
-        add(userid, -1 * amount, currency, 0, null);
-
-        //Запоминаем макс. timestamp, что бы потом найти upvote c timestamp > чем у перевода.    
-        if(this.balances[userid][currency].payoutTime < payoutTime) {
-            this.balances[userid][currency].payoutTime = payoutTime;
-        }
+        this.plus(userid, -1 * amount, currency, payoutTime, null);
     }
     
     process(historyEntry) {
+        let time =  Date.parse(historyEntry[1].timestamp);        
         let id = historyEntry[0];
         let op = historyEntry[1].op[0];
         let opBody = historyEntry[1].op[1];
@@ -98,19 +92,19 @@ class Balances extends Scanner {
                 //пример memo: userid благодарит за permlink 
                 let userid = opBody.memo.split(" ")[0];
 
-                log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currncy );
+                log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
                 
-                minus(userid, amount, currency, id);
+                this.minus(userid, amount, currency, time);
             }
             
             // Входящий перевод - прибавляем к балансу
             if(opBody.to == global.settings.dobrobot) {
-                let amount = parsefloat(opBody.amount.split(" ")[0]);
+                let amount = parseFloat(opBody.amount.split(" ")[0]);
                 let currency = opBody.amount.split(" ")[1];
-                let opt = parseFloat(opBody.memo);
+                let opt = opBody.memo;
                 let userid = opBody.from;
-                log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currncy + "(" + opt + ")");
-                plus(userid, amount, currency, id, opt);
+                log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
+                this.plus(userid, amount, currency, time, opt);
 
             }
         }

@@ -9,7 +9,7 @@ var fs = require("fs");
 
 function getConfigDir() {
     if(process.env.CONFIGDIR) {
-        return = process.env.CONFIGDIR;
+        return process.env.CONFIGDIR;
     } else {
         return require('os').homedir();
     }

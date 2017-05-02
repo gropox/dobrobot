@@ -34,12 +34,13 @@ async function getCurrentServerTimeAndBlock() {
 }
 
 module.exports.getCurrentServerTimeAndBlock = getCurrentServerTimeAndBlock;
+const HIST_BLOCK = 20;
 
 async function scanUserHistory(userid, scanner) {
 
         //scan user history backwards, and collect transfers
         let start = -1;
-        let count = 500;
+        let count = HIST_BLOCK;
         log.debug("scan history, userid = " + userid);
         while(start == -1 || start > 0) {
             log.debug("\n\n\nget history start = "+ start + ", count = " + count);
@@ -64,7 +65,7 @@ async function scanUserHistory(userid, scanner) {
                 break;
             }
             start = firstReadId;
-            count = (start > 500)?500:start;
+            count = (start > HIST_BLOCK)?HIST_BLOCK:start;
         }
 }
 
@@ -78,14 +79,15 @@ module.exports.scanHistory = scanHistory;
 
 
 module.exports.transfer = async function(receiver, amount, currency, memo) {
+    log.info("transfer " + receiver + ", " + amount + ", [" + memo + "]" );
+
     if(global.settings.broadcast) {
-        log.info("broadcast transfer " + receiver + ", " + amount + ", [" + memo + "]" );
-        
+        log.info("\tbroadcasting transfer");    
         await steem.broadcast.transferAsync(ACTIVE_KEY, USERID, 
             receiver, amount.toFixed(3) + " " + currency, memo);
         
     } else {
-        log.info("no broadcasting, dont transfer ");
+        log.info("no broadcasting, dont transfer");
     }
 }
 
