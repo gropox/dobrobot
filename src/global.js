@@ -16,7 +16,7 @@ function getConfigDir() {
 }
 
 const CONFIG_DIR = getConfigDir();
-const CONFIG_FILE = CONFIG_DIR + "/.dobrobot.js";
+const CONFIG_FILE = CONFIG_DIR + "/dobrobot.js";
 
 
 module.exports.settings = {
@@ -34,7 +34,7 @@ function init() {
     try {
         let sets = JSON.parse(fs.readFileSync(CONFIG_FILE, "utf8"));
         module.exports.settings = sets;  
-        console.log("loaded settings:\n" + JSON.stringify(module.exports.settings, null, 4));     
+        //console.log("loaded settings:\n" + JSON.stringify(module.exports.settings, null, 4));     
     } catch(e) {
         console.warn("unable to read config (" + CONFIG_FILE + ")");
         try {

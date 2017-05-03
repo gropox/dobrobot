@@ -31,7 +31,7 @@ class Votes extends Scanner {
         log.trace("\tupvote time " + time);
         //Учитывать только апвоты с последней выплаты
         if(this.minTime < time && op == "vote" && opBody.voter == this.userid) {
-            log.debug("\tfound upvote " + opBody.author + "/" + opBody.permlink);
+            log.info("\tfound upvote of " + this.userid + " (" + (opBody.weight / 100) + ") " + opBody.author + "/" + opBody.permlink);
             this.votes.push(opBody);
         }
         
@@ -78,7 +78,9 @@ class Balances extends Scanner {
     }
     
     process(historyEntry) {
-        let time =  Date.parse(historyEntry[1].timestamp);        
+        let time =  Date.parse(historyEntry[1].timestamp);
+        let block = historyEntry[1].block;
+
         let id = historyEntry[0];
         let op = historyEntry[1].op[0];
         let opBody = historyEntry[1].op[1];
@@ -93,7 +95,7 @@ class Balances extends Scanner {
                 let userid = opBody.memo.split(" ")[0];
 
                 log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
-                
+                log.trace(userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency);
                 this.minus(userid, amount, currency, time);
             }
             
@@ -104,6 +106,7 @@ class Balances extends Scanner {
                 let opt = opBody.memo;
                 let userid = opBody.from;
                 log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
+                log.trace(userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency);
                 this.plus(userid, amount, currency, time, opt);
 
             }

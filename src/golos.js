@@ -34,7 +34,7 @@ async function getCurrentServerTimeAndBlock() {
 }
 
 module.exports.getCurrentServerTimeAndBlock = getCurrentServerTimeAndBlock;
-const HIST_BLOCK = 20;
+const HIST_BLOCK = 1000;
 
 async function scanUserHistory(userid, scanner) {
 
@@ -43,14 +43,14 @@ async function scanUserHistory(userid, scanner) {
         let count = HIST_BLOCK;
         log.debug("scan history, userid = " + userid);
         while(start == -1 || start > 0) {
-            log.debug("\n\n\nget history start = "+ start + ", count = " + count);
+            log.trace("\n\n\nget history start = "+ start + ", count = " + count);
             let userHistory = await steem.api.getAccountHistoryAsync(userid, start, count);
             if(!(userHistory instanceof Array)) {
                 log.error("not an array");
                 return;
             }
             let firstReadId = userHistory[0][0];
-            log.debug("first id = " + firstReadId);
+            log.trace("first id = " + firstReadId);
             let terminate = false;
             for(let h = 0; h < userHistory.length; h++) {
                 log.trace("check hist id " + userHistory[h][0] + " / " + userHistory[h][1].op[0]);
@@ -60,7 +60,7 @@ async function scanUserHistory(userid, scanner) {
                     }
                 }
             }
-            log.debug("terminate = " + terminate);
+            log.trace("terminate = " + terminate);
             if(terminate) {
                 break;
             }
