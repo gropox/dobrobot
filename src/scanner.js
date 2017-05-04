@@ -81,6 +81,11 @@ class Balances extends Scanner {
         let time =  Date.parse(historyEntry[1].timestamp);
         let block = historyEntry[1].block;
 
+        if(block <= global.settings.minBlock) {
+            //Неучитывать данные после релиза
+            return true;
+        }
+                    
         let id = historyEntry[0];
         let op = historyEntry[1].op[0];
         let opBody = historyEntry[1].op[1];

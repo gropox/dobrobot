@@ -7,6 +7,10 @@ overview: true
 <input id="dobrobot" type="text" required class="text" name="dobrobot" placeholder="Логин добробота">
 </label>
 <br/>
+<label>Блок на момент релиза<br>
+<input id="minBlock" type="text" required class="text" name="minBlock" placeholder="мин блок" value="0">
+</label>
+<br/>
 <label>Показывать только не нулевой баланс<br>
 <input id="nonzero" type="checkbox" name="nonzero" checked>
 </label>
@@ -22,6 +26,6 @@ overview: true
     var golosbase = "https://golos.io";    
     var golos_ws = "wss://ws.golos.io";
 </script>
-<script src="src/golos.js"></script>
+<script src="golos.js"></script>
 <script src="src/browser.js" onload="recoverData(),scanHistory()"></script>
 

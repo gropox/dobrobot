@@ -97,8 +97,8 @@ async function transferHonor(userid, balance) {
         if(vote.weight <= 0) {
             log.debug("flag found " + vote.author + "/" + vote.permlink);
         }
-        if(global.isBlacklisted(vote.author)) {
-            log.debug("author blacklisted " + vote.author + "/" + vote.permlink);
+        if(global.settings.ignorelistAuthors.includes(vote.author)) {
+            log.info("author blacklisted " + vote.author + "/" + vote.permlink);
             continue;
         }
         
@@ -141,6 +141,17 @@ module.exports.run = async function() {
             
             for(let userid of users) {
                 log.debug("process " + userid);
+                if(global.settings.blacklistSponsors.includes(userid)) {
+                    log.info("\tsponsor blacklisted, refund");
+                    let bal = balances[userid]
+                    if(bal.GOLOS.amount >= MIN_AMOUNT) {
+                        await golos.transfer(userid, bal.GOLOS.amount, "GOLOS", userid + " Возврат");
+                    }
+                    if(bal.GBG.amount >= MIN_AMOUNT) {
+                        await golos.transfer(userid, bal.GBG.amount, "GBG", userid + " Возврат");
+                    }
+                    continue;
+                }
                 await honor(userid, balances[userid]);
             }
             

@@ -25,7 +25,9 @@ module.exports.settings = {
     broadcast : false,
     dobrobot : "testuser",
     dobrobotActiveKey : "5df47f4f4f",
-    blacklist : ["golos.loto", "lotobot"]
+    minBlock : 0,
+    ignorelistAuthors : ["golos.loto", "lotobot", "habreplicator"],
+    blacklistSponsors : ["znation", "anyone"]
 };
 
 

@@ -1,7 +1,8 @@
 
 function recoverData() {
     
-    let recover = true;
+    let recoverName = true;
+    let recoverBlock = true;
 	//console.log("updateValues = " + JSON.stringify(site));     
     var vars = [], hash;
     var hashes = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
@@ -13,13 +14,21 @@ function recoverData() {
     }
     
     if(vars["dobrobot"]) {
-        recover = false;
+        recoverName = false;
         document.getElementById("dobrobot").value = vars["dobrobot"];
     }    
+    if(vars["minBlock"]) {
+        recoverBlock = false;
+        document.getElementById("minBlock").value = vars["minBlock"];
+    }    
     
-    if(recover) {
+    if(recoverName) {
         let dobrobot = document.getElementById("dobrobot");
         dobrobot.value = localStorage.getItem("dobrobot");
+    }
+    if(recoverBlock) {
+        let minBlock = document.getElementById("minBlock");
+        minBlock.value = localStorage.getItem("minBlock");
     }
 }
 
@@ -30,15 +39,16 @@ function scanHistory() {
     steem.api.setWebSocket(golos_ws);
     
     var dobrobot = document.getElementById("dobrobot").value;
+    var minBlock = document.getElementById("minBlock").value;
     var nonzero = document.getElementById("nonzero").checked;
     
     localStorage.setItem("dobrobot", dobrobot);
+    localStorage.setItem("minBlock", minBlock);
     
     if(typeof dobrobot == "undefined" || dobrobot == "") {
-        alert("Введите имен пользователя dobrobot!");
+        alert("Введите имя пользователя dobrobot!");
         return;
     }
-    
     
     var balances = {};
     
@@ -120,7 +130,10 @@ function scanHistory() {
     function updateBalance(historyEntry) {
         let time =  Date.parse(historyEntry[1].timestamp);
         let block = historyEntry[1].block;
-
+        if(block <= minBlock) {
+            //Неучитывать данные после релиза
+            return true;
+        }
         let id = historyEntry[0];
         let op = historyEntry[1].op[0];
         let opBody = historyEntry[1].op[1];
