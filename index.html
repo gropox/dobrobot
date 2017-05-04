@@ -1,0 +1,27 @@
+---
+layout: default
+overview: true
+---
+<div id="input">
+<label>Логин добробота<br>
+<input id="dobrobot" type="text" required class="text" name="dobrobot" placeholder="Логин добробота">
+</label>
+<br/>
+<label>Показывать только не нулевой баланс<br>
+<input id="notzero" type="checkbox" name="notzero" checked>
+</label>
+</div>
+
+<button onclick="scanHistory()">сканировать</button>
+
+<div id="balance">
+
+</div>
+
+<script type="text/javascript">
+    var golosbase = "https://golos.io";    
+    var golos_ws = "wss://ws.golos.io";
+</script>
+<script src="src/golos.js"></script>
+<script src="src/browser.js" onload="recoverData(),scanHistory()"></script>
+
