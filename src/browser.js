@@ -59,7 +59,7 @@ function scanHistory() {
        </tr>
 `;
        
-        for(let userid of Object.keys(balances)) {
+        for(let userid of Object.keys(balances).sort()) {
             console.log(userid + " = " + JSON.stringify(balances[userid]));
             let bal = balances[userid];
             if(nonzero) {
