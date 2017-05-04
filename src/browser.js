@@ -30,6 +30,7 @@ function scanHistory() {
     steem.api.setWebSocket(golos_ws);
     
     var dobrobot = document.getElementById("dobrobot").value;
+    var nonzero = document.getElementById("nonzero").checked;
     
     localStorage.setItem("dobrobot", dobrobot);
     
@@ -61,6 +62,13 @@ function scanHistory() {
         for(let userid of Object.keys(balances)) {
             console.log(userid + " = " + JSON.stringify(balances[userid]));
             let bal = balances[userid];
+            if(nonzero) {
+                if(bal.GOLOS.amount < 0.001 && bal.GOLOS.amount > -0.001
+                   && bal.GBG.amount < 0.001 && bal.GBG.amount > -0.001
+                ) {
+                    continue;
+                }
+            }
             html += `
 <tr>
     <td>${userid}</td>
