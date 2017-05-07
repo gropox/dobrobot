@@ -6,19 +6,19 @@ let Logger = function(source, level) {
     let p = source.split(/[\/\\]/);
     this.s = p[p.length-1].split(".")[0];
     
-    this._trc = debug("lotterybot:trc:" + this.s);
-    this._dbg = debug("lotterybot:dbg:" + this.s);
-    this._inf = debug("lotterybot:inf:" + this.s);
-    this._wrn = debug("lotterybot:wrn:" + this.s);
-    this._err = debug("lotterybot:err:" + this.s);
+    this._trc = debug("dobrobot:trc:" + this.s);
+    this._dbg = debug("dobrobot:dbg:" + this.s);
+    this._inf = debug("dobrobot:inf:" + this.s);
+    this._wrn = debug("dobrobot:wrn:" + this.s);
+    this._err = debug("dobrobot:err:" + this.s);
 
     if(typeof process.env.DEBUG == "undefined") {
-        let dbgNamespace = "lotterybot:err* lotterybot:wrn* lotterybot:inf*";
+        let dbgNamespace = "dobrobot:err* dobrobot:wrn* dobrobot:inf*";
         if(global.runtime.dl>0) {
-            dbgNamespace = dbgNamespace + " lotterybot:dbg*";
+            dbgNamespace = dbgNamespace + " dobrobot:dbg*";
         }       
         if(global.runtime.dl>1) {
-            dbgNamespace = dbgNamespace + " lotterybot:trc*";
+            dbgNamespace = dbgNamespace + " dobrobot:trc*";
         }
         console.log("enable " + dbgNamespace);
         debug.enable(dbgNamespace);

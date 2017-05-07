@@ -61,6 +61,7 @@ class Balances extends Scanner {
             };
         }
         
+        log.trace("\tadd " + userid + " " + amount + " " + currency);
         this.balances[userid][currency].amount += amount;
 
         if(this.balances[userid].minTime < time) {
@@ -100,7 +101,7 @@ class Balances extends Scanner {
                 let userid = opBody.memo.split(" ")[0];
 
                 log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
-                log.trace(userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency);
+                log.trace(userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency + "\t" + block);
                 this.minus(userid, amount, currency, time);
             }
             
@@ -111,7 +112,7 @@ class Balances extends Scanner {
                 let opt = opBody.memo;
                 let userid = opBody.from;
                 log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
-                log.trace(userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency);
+                log.trace(userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" + block);
                 this.plus(userid, amount, currency, time, opt);
 
             }

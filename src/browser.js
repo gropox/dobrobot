@@ -174,7 +174,7 @@ function scanHistory() {
     function readHistory(end) {
     
         //read in blocks of 1000 elements
-        var count = Math.min((end), 1000);
+        var count = Math.min((end), 2000);
         console.log("read history ending by " + end + " count = " + count);
         steem.api.getAccountHistory(dobrobot, end, count, function(err, result) {
             if(err) {
