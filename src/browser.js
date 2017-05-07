@@ -32,6 +32,7 @@ function recoverData() {
     }
 }
 
+const EXCLUDED_USERID = ["robot"];
 
 function scanHistory() {
     console.log("scanning history");
@@ -70,6 +71,9 @@ function scanHistory() {
 `;
        
         for(let userid of Object.keys(balances).sort()) {
+            if(EXCLUDED_USERID.includes(userid)) {
+                continue;
+            }
             console.log(userid + " = " + JSON.stringify(balances[userid]));
             let bal = balances[userid];
             if(nonzero) {
