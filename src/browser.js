@@ -182,8 +182,8 @@ function scanHistory() {
             } else {
                 for(var i = 0; i < result.length; i++, end--) {
                     updateBalance(result[i]);
-                    drawBalances();
                 }
+                drawBalances();                
             }
         });
     }
