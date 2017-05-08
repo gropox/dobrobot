@@ -1,5 +1,5 @@
 var log = require("./logger").getLogger(__filename, 12);
-var global = require("./global");
+var OptStack = require("./options");
 
 class Scanner {
 
@@ -13,75 +13,71 @@ class Scanner {
 
 class Votes extends Scanner {
     
-    constructor(userid, minTime) {
+    constructor(userid, minBlock) {
         super();
         this.userid = userid;
-        this.minTime = minTime;
+        this.minBlock = minBlock;
         this.votes = [];
-        log.debug("Search for votes of " + this.userid + " since " + this.minTime);
+        log.debug("Search for votes of " + this.userid + " since " + this.minBlock);
     }
     
     process(historyEntry) {
         //Последяя выплата
-        let time =  Date.parse(historyEntry[1].timestamp);
+        let block =  historyEntry[1].block;
         let op = historyEntry[1].op[0];
         let opBody = historyEntry[1].op[1];
-        opBody.time = time; //Для сортировки
+        opBody.block = block; //Для сортировки
 
-        log.trace("\tupvote time " + time);
+        log.trace("\tupvote block " + block);
         //Учитывать только апвоты с последней выплаты
-        if(this.minTime < time && op == "vote" && opBody.voter == this.userid) {
+        if(this.minBlock < block && op == "vote" && opBody.voter == this.userid) {
             log.info("\tfound upvote of " + this.userid + " (" + (opBody.weight / 100) + ") " + opBody.author + "/" + opBody.permlink);
             this.votes.push(opBody);
         }
         
-        return this.minTime > time; //Пошли уже старые записи, дальше сканировать историю нет смысла
+        return this.minBlock > block; //Пошли уже старые записи, дальше сканировать историю нет смысла
     }    
 }
 
 class Balances extends Scanner {
-    constructor() {
+    constructor(dobrobot, minBlock) {
         super(null);
         this.balances = {};
+        this.minBlock = minBlock;
+        this.dobrobot = dobrobot;
     }
     
-    plus(userid, amount, currency, time, opt) {
+    plus(userid, amount, currency, block, opt) {
         if(this.balances[userid]) {
         } else {
             this.balances[userid] = {
-                minTime: 0,
+                lastBlock: 0,
                 GOLOS : {
                     amount : 0, 
-                    opt : 1
+                    opt : new OptStack()
                 },
                 GBG : {
                     amount : 0, 
-                    opt : 1
+                    opt : new OptStack()
                 }
             };
         }
         
         this.balances[userid][currency].amount += amount;
-
-        if(this.balances[userid].minTime < time) {
-            this.balances[userid].minTime = time;
-            // Если в memo входящего переводы было число, 
-            // считаем его как  amount per vote
-            if(opt) {
-                this.balances[userid][currency].opt = opt;
-            }
+        this.balances[userid][currency].block = block;
+        if(opt) {
+            this.balances[userid][currency].opt.push(opt, block);
         }
     }
     
-    minus(userid, amount, currency, payoutTime) {
-        this.plus(userid, -1 * amount, currency, payoutTime, null);
+    minus(userid, amount, currency, block) {
+        this.plus(userid, -1 * amount, currency, block, null);
     }
     
     process(historyEntry) {
-        let time =  Date.parse(historyEntry[1].timestamp);
         let block = historyEntry[1].block;
 
-        if(block <= global.settings.minBlock) {
+        if(block <= this.minBlock) {
             //Неучитывать данные после релиза
             return true;
         }
@@ -92,7 +88,7 @@ class Balances extends Scanner {
         
         if(op == "transfer") {
             // Исходящий перевод - отнимаем от баланса
-            if(opBody.from == global.settings.dobrobot) {
+            if(opBody.from == this.dobrobot) {
                 
                 let amount = parseFloat(opBody.amount.split(" ")[0]);
                 let currency = opBody.amount.split(" ")[1];
@@ -100,19 +96,19 @@ class Balances extends Scanner {
                 let userid = opBody.memo.split(" ")[0];
 
                 log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
-                log.trace(userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency);
-                this.minus(userid, amount, currency, time);
+                log.trace(userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
+                this.minus(userid, amount, currency, block);
             }
             
             // Входящий перевод - прибавляем к балансу
-            if(opBody.to == global.settings.dobrobot) {
+            if(opBody.to == this.dobrobot) {
                 let amount = parseFloat(opBody.amount.split(" ")[0]);
                 let currency = opBody.amount.split(" ")[1];
                 let opt = opBody.memo;
                 let userid = opBody.from;
                 log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
-                log.trace(userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency);
-                this.plus(userid, amount, currency, time, opt);
+                log.trace(userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
+                this.plus(userid, amount, currency, block, opt);
 
             }
         }
@@ -122,3 +118,7 @@ class Balances extends Scanner {
 module.exports.Votes = Votes;
 module.exports.Balances = Balances;
 
+if(!(typeof window == "undefined")) {
+    window.Balances = Balances;
+    window.OPTIONS = OptStack.OPTIONS;
+}
