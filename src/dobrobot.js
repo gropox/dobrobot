@@ -52,6 +52,9 @@ async function getBalances() {
     return balancesScanner.balances;
 }
 
+/**
+ * перевод денег пользователям из черного списка. 
+ */
 async function refund(userid, bal) {
     log.info("\tsponsor blacklisted, refund");
 
@@ -93,7 +96,7 @@ Scan for balances
             for(let userid of users) {
                 log.debug("process " + userid);
                 if(global.settings.blacklistSponsors.includes(userid)) {
-                    refund(userid,  balances[userid]);
+                    await refund(userid,  balances[userid]);
                     continue;
                 }
                 await honor(userid, balances[userid]);

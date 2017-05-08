@@ -774,11 +774,13 @@ function plural(ms, n, name) {
 (function (process){
 var dateFormat = require('dateformat');
 
+module.exports.MIN_AMOUNT = 0.001;
+
 module.exports.runtime = {
     dl : 0
 }
 
-if(window === "undfined") {
+if(typeof window == "undefined") {
 
     var fs = require("fs");
 
@@ -861,19 +863,19 @@ let Logger = function(source, level) {
     let p = source.split(/[\/\\]/);
     this.s = p[p.length-1].split(".")[0];
     
-    this._trc = debug("lotterybot:trc:" + this.s);
-    this._dbg = debug("lotterybot:dbg:" + this.s);
-    this._inf = debug("lotterybot:inf:" + this.s);
-    this._wrn = debug("lotterybot:wrn:" + this.s);
-    this._err = debug("lotterybot:err:" + this.s);
+    this._trc = debug("dobrobot:trc:" + this.s);
+    this._dbg = debug("dobrobot:dbg:" + this.s);
+    this._inf = debug("dobrobot:inf:" + this.s);
+    this._wrn = debug("dobrobot:wrn:" + this.s);
+    this._err = debug("dobrobot:err:" + this.s);
 
     if(typeof process.env.DEBUG == "undefined") {
-        let dbgNamespace = "lotterybot:err* lotterybot:wrn* lotterybot:inf*";
+        let dbgNamespace = "dobrobot:err* dobrobot:wrn* dobrobot:inf*";
         if(global.runtime.dl>0) {
-            dbgNamespace = dbgNamespace + " lotterybot:dbg*";
+            dbgNamespace = dbgNamespace + " dobrobot:dbg*";
         }       
         if(global.runtime.dl>1) {
-            dbgNamespace = dbgNamespace + " lotterybot:trc*";
+            dbgNamespace = dbgNamespace + " dobrobot:trc*";
         }
         console.log("enable " + dbgNamespace);
         debug.enable(dbgNamespace);
@@ -920,7 +922,7 @@ class Option {
 }
 
 const OPTIONS = {
-    APV : "добро/голос",
+    APV : "д/г",
     STOP : "стоп",
     START : "старт",
     WHALE: "кит",
@@ -1070,29 +1072,29 @@ class Scanner {
 
 class Votes extends Scanner {
     
-    constructor(userid, minTime) {
+    constructor(userid, minBlock) {
         super();
         this.userid = userid;
-        this.minTime = minTime;
+        this.minBlock = minBlock;
         this.votes = [];
-        log.debug("Search for votes of " + this.userid + " since " + this.minTime);
+        log.debug("Search for votes of " + this.userid + " since " + this.minBlock);
     }
     
     process(historyEntry) {
         //Последяя выплата
-        let time =  Date.parse(historyEntry[1].timestamp);
+        let block =  historyEntry[1].block;
         let op = historyEntry[1].op[0];
         let opBody = historyEntry[1].op[1];
-        opBody.time = time; //Для сортировки
+        opBody.block = block; //Для сортировки
 
-        log.trace("\tupvote time " + time);
+        log.trace("\tupvote block " + block);
         //Учитывать только апвоты с последней выплаты
-        if(this.minTime < time && op == "vote" && opBody.voter == this.userid) {
+        if(this.minBlock < block && op == "vote" && opBody.voter == this.userid) {
             log.info("\tfound upvote of " + this.userid + " (" + (opBody.weight / 100) + ") " + opBody.author + "/" + opBody.permlink);
             this.votes.push(opBody);
         }
         
-        return this.minTime > time; //Пошли уже старые записи, дальше сканировать историю нет смысла
+        return this.minBlock > block; //Пошли уже старые записи, дальше сканировать историю нет смысла
     }    
 }
 
@@ -1108,7 +1110,7 @@ class Balances extends Scanner {
         if(this.balances[userid]) {
         } else {
             this.balances[userid] = {
-                minTime: 0,
+                lastBlock: 0,
                 GOLOS : {
                     amount : 0, 
                     opt : new OptStack()
@@ -1120,8 +1122,9 @@ class Balances extends Scanner {
             };
         }
         
+        log.trace("\tadd " + userid + " " + amount + " " + currency);
         this.balances[userid][currency].amount += amount;
-
+        this.balances[userid][currency].block = block;
         if(opt) {
             this.balances[userid][currency].opt.push(opt, block);
         }
@@ -1153,8 +1156,10 @@ class Balances extends Scanner {
                 let userid = opBody.memo.split(" ")[0];
 
                 log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
-                log.trace(userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency);
+
+                log.trace(userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
                 this.minus(userid, amount, currency, block);
+
             }
             
             // Входящий перевод - прибавляем к балансу
@@ -1164,9 +1169,9 @@ class Balances extends Scanner {
                 let opt = opBody.memo;
                 let userid = opBody.from;
                 log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
-                log.trace(userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency);
-                this.plus(userid, amount, currency, block, opt);
 
+                log.trace(userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
+                this.plus(userid, amount, currency, block, opt);
             }
         }
         return false;
@@ -1175,7 +1180,7 @@ class Balances extends Scanner {
 module.exports.Votes = Votes;
 module.exports.Balances = Balances;
 
-if(window) {
+if(!(typeof window == "undefined")) {
     window.Balances = Balances;
     window.OPTIONS = OptStack.OPTIONS;
 }

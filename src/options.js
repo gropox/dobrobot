@@ -9,7 +9,7 @@ class Option {
 }
 
 const OPTIONS = {
-    APV : "добро/голос",
+    APV : "д/г",
     STOP : "стоп",
     START : "старт",
     WHALE: "кит",

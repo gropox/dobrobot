@@ -62,8 +62,10 @@ function scanHistory() {
                 ret += comma + OPTIONS.APV + "=" + o.val;
                 comma = "<br/>";
             } else {
-                ret += comma + o.type;
-                comma = "<br/>";
+                if(OPTIONS.WHALE != o.type) {
+                    ret += comma + o.type;
+                    comma = "<br/>";
+                }
             }
         }
         return ret;
@@ -124,10 +126,13 @@ function scanHistory() {
                 console.error("Ошибка чтения истории!", err);
             } else {
                 console.log("\nREAD history block");
-                for(var i = 0; i < result.length; i++, end--) {
+                for(var i = 0; i < result.length; i++) {
                     scanner.process(result[i]);
                 }
                 drawBalances();
+                if(end - 500 > 0) {
+                    readHistory(end - 500);
+                }
             }
         });
     }
