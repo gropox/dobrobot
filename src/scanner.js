@@ -1,5 +1,5 @@
 var log = require("./logger").getLogger(__filename, 12);
-var OptStack = require("./options");
+var Balance = require("./balancer");
 
 class Scanner {
 
@@ -50,25 +50,11 @@ class Balances extends Scanner {
     plus(userid, amount, currency, block, opt) {
         if(this.balances[userid]) {
         } else {
-            this.balances[userid] = {
-                lastBlock: 0,
-                GOLOS : {
-                    amount : 0, 
-                    opt : new OptStack()
-                },
-                GBG : {
-                    amount : 0, 
-                    opt : new OptStack()
-                }
-            };
+            this.balances[userid] = new Balance();
         }
         
         log.trace("\tadd " + userid + " " + amount + " " + currency);
-        this.balances[userid][currency].amount += amount;
-        this.balances[userid][currency].block = block;
-        if(opt) {
-            this.balances[userid][currency].opt.push(opt, block);
-        }
+        this.balances[userid].plus(amount, currency, block, opt);
     }
     
     minus(userid, amount, currency, block) {
