@@ -23409,6 +23409,10 @@ OptStack.isUserTransfer = isUserTransfer;
 
 module.exports = OptStack;
 
+if(!(typeof window === "undefined")) {
+    window.OPTIONS = OPTIONS;
+}
+
 }).call(this,"/src/options.js")
 },{"./logger":182}],184:[function(require,module,exports){
 (function (process,__filename){

@@ -140,3 +140,7 @@ OptStack.OPTIONS = OPTIONS;
 OptStack.isUserTransfer = isUserTransfer;
 
 module.exports = OptStack;
+
+if(!(typeof window === "undefined")) {
+    window.OPTIONS = OPTIONS;
+}
