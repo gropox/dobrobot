@@ -1,5 +1,6 @@
 var log = require("./logger").getLogger(__filename, 12);
 var Balance = require("./balancer");
+var options = require("./options");
 
 class Scanner {
 
@@ -95,6 +96,11 @@ class Balances extends Scanner {
                 let currency = opBody.amount.split(" ")[1];
                 let opt = opBody.memo;
                 let userid = opBody.from;
+                let m = options.isUserTransfer(opt);
+                if(m) {
+                    userid = m[1];
+                    opt = m[2];
+                }
                 log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
 
                 log.trace(userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
