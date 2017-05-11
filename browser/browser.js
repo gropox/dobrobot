@@ -108,7 +108,7 @@ function scanHistory() {
     <td valign="top">${getOpts(bal.GOLOS.opt)}</td>
     <td valign="top">${bal.GBG.amount.toFixed(3)}</td>
     <td valign="top">${getOpts(bal.GBG.opt)}</td>
-    <td valign="top">${bal.minTime}</td>
+    <td valign="top">${bal.minBlock}</td>
 </tr>
 `;
         }
