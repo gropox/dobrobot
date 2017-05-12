@@ -87,7 +87,9 @@ class Balance {
         if(opt) {
             this[currency].opt.push(opt, block);
         }
-        this.minBlock = block;
+        if(this.minBlock < block) {
+            this.minBlock = block;
+        }
     }
     
     isAvailable() {

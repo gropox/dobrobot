@@ -85,7 +85,7 @@ class Balances extends Scanner {
 
                 log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
 
-                log.trace(userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
+                log.trace("csv\t" + userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
                 this.minus(userid, amount, currency, block);
 
             }
@@ -103,7 +103,7 @@ class Balances extends Scanner {
                 }
                 log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
 
-                log.trace(userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
+                log.trace("csv\t" + userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
                 this.plus(userid, amount, currency, block, opt);
             }
         }
