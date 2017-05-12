@@ -133,7 +133,7 @@ class OptStack {
 }
 
 function isUserTransfer(opt) {
-    return opt.match(/^@([a-z][-\.a-z\d]+[a-z\d]) +([0-9.]+)$/);
+    return opt.match(/^@([a-z][-\.a-z\d]+[a-z\d])$/);
 }
 
 OptStack.OPTIONS = OPTIONS;
