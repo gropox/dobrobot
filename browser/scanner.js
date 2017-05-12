@@ -23047,7 +23047,9 @@ class Balance {
         if(opt) {
             this[currency].opt.push(opt, block);
         }
-        this.minBlock = block;
+        if(this.minBlock < block) {
+            this.minBlock = block;
+        }
     }
     
     isAvailable() {
@@ -23401,7 +23403,7 @@ class OptStack {
 }
 
 function isUserTransfer(opt) {
-    return opt.match(/^@([a-z][-\.a-z\d]+[a-z\d]) +([0-9.]+)$/);
+    return opt.match(/^@([a-z][-\.a-z\d]+[a-z\d])$/);
 }
 
 OptStack.OPTIONS = OPTIONS;
@@ -23503,7 +23505,7 @@ class Balances extends Scanner {
 
                 log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
 
-                log.trace(userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
+                log.trace("csv\t" + userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
                 this.minus(userid, amount, currency, block);
 
             }
@@ -23515,13 +23517,14 @@ class Balances extends Scanner {
                 let opt = opBody.memo;
                 let userid = opBody.from;
                 let m = options.isUserTransfer(opt);
+                log.debug(JSON.stringify(m));
                 if(m) {
                     userid = m[1];
-                    opt = m[2];
+                    opt = "0.001";
                 }
                 log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
 
-                log.trace(userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
+                log.trace("csv\t" + userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
                 this.plus(userid, amount, currency, block, opt);
             }
         }
