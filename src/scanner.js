@@ -99,7 +99,7 @@ class Balances extends Scanner {
                 let m = options.isUserTransfer(opt);
                 if(m) {
                     userid = m[1];
-                    opt = m[2];
+                    opt = "0.001";
                 }
                 log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
 
