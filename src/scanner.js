@@ -97,6 +97,7 @@ class Balances extends Scanner {
                 let opt = opBody.memo;
                 let userid = opBody.from;
                 let m = options.isUserTransfer(opt);
+                log.debug(JSON.stringify(m));
                 if(m) {
                     userid = m[1];
                     opt = "0.001";
