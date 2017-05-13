@@ -31,7 +31,7 @@ class Votes extends Scanner {
 
         log.trace("\tupvote block " + block);
         //Учитывать только апвоты с последней выплаты
-        if(this.minBlock < block && op == "vote" && opBody.voter == this.userid) {
+        if(this.minBlock < block && op == "vote" && opBody.voter == this.userid && opBody.author != this.userid) {
             log.info("\tfound upvote of " + this.userid + " (" + (opBody.weight / 100) + ") " + opBody.author + "/" + opBody.permlink);
             this.votes.push(opBody);
         }

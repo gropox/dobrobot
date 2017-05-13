@@ -122,7 +122,7 @@ class Balance {
     
     getAmount(weight) {
 
-        log.debug("current user balance " + JSON.stringify(this));
+        log.debug("current user balance " + this.toString());
         
         let currency = null;
         if(this.GOLOS.isAvailable(weight)) {
@@ -146,7 +146,7 @@ class Balance {
             currency.reduce(global.MIN_AMOUNT);
         }
         
-        log.debug("reduced user balance " + JSON.stringify(this));
+        log.debug("reduced user balance " + this.toString());
         log.trace("calculated amount = " + JSON.stringify(amount));
         return amount;
     }    

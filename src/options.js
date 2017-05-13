@@ -1,5 +1,5 @@
 var log = require("./logger").getLogger(__filename);
-
+var global = require("./global");
 class Option {
     constructor(type, val, block) {
         this.type = type;
@@ -85,7 +85,7 @@ class OptStack {
     }
     
     getAPV() {
-        let apv = 0;
+        let apv = global.MIN_AMOUNT;
         
         for( let o of this.stack) {
             if(o.type == OPTIONS.APV) {

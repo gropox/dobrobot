@@ -22976,11 +22976,26 @@ class Currency {
        this.name = name;
        this.amount = 0.0;
        this.opt = new OpStack();
+       this.income = false;
+       this.incomeBlock = 0;
+       this.incomeUserId = null;
     }
 
-    plus(amount) {
+    plus(amount, block, fromUserId) {
         this.amount += amount;
         this.amount = parseFloat(this.amount.toFixed(3));
+        
+        //Определяем, было ли пополнение баланса, 
+        // что бы потом проинформировать пользователя 
+        if(block > this.incomeBlock) {
+            if(amount >= global.MIN_AMOUNT) {
+                this.income = true;
+                this.incomeUserId = fromUserId;
+            } else {
+                this.income = false;
+            }
+            this.incomeBlock = block;
+        }
     }
     
     reduce(amount) {
@@ -23041,9 +23056,9 @@ class Balance {
         this.GOLOS = new Currency("GOLOS");
     }
     
-    plus(amount, currency, block, opt) {
+    plus(amount, currency, block, opt, fromUserId) {
         log.trace("\tadd " + amount + " " + currency);
-        this[currency].plus(amount);
+        this[currency].plus(amount, block, fromUserId);
         if(opt) {
             this[currency].opt.push(opt, block);
         }
@@ -23061,9 +23076,13 @@ class Balance {
         return golos || gbg;
     }
     
+    toString() {
+        return  `GBG = { amount : ${this.GBG.amount}, act : ${this.GBG.opt.isActive()}}, GOLOS = { amount : ${this.GOLOS.amount}, act : ${this.GOLOS.opt.isActive()}}`;
+    }
+    
     getAmount(weight) {
 
-        log.debug("current user balance " + JSON.stringify(this));
+        log.debug("current user balance " + this.toString());
         
         let currency = null;
         if(this.GOLOS.isAvailable(weight)) {
@@ -23087,7 +23106,7 @@ class Balance {
             currency.reduce(global.MIN_AMOUNT);
         }
         
-        log.debug("reduced user balance " + JSON.stringify(this));
+        log.debug("reduced user balance " + this.toString());
         log.trace("calculated amount = " + JSON.stringify(amount));
         return amount;
     }    
@@ -23269,7 +23288,7 @@ module.exports.getLogger = function (f,l) {
 },{"./global":181,"_process":293,"debug":10}],183:[function(require,module,exports){
 (function (__filename){
 var log = require("./logger").getLogger(__filename);
-
+var global = require("./global");
 class Option {
     constructor(type, val, block) {
         this.type = type;
@@ -23354,6 +23373,18 @@ class OptStack {
         stackOption(this, opt, block);
     }
     
+    getAPV() {
+        let apv = global.MIN_AMOUNT;
+        
+        for( let o of this.stack) {
+            if(o.type == OPTIONS.APV) {
+                apv = o.val;
+                break;
+            }
+        }
+        return apv;
+    }
+    
     getAmountPerVote(w) {
         if(!this.isActive()) {
             throw "RuntimeException: currency is not active!";
@@ -23364,14 +23395,7 @@ class OptStack {
             weight = parseFloat(w);
         }
         
-        let apv = null;
-        
-        for( let o of this.stack) {
-            if(o.type == OPTIONS.APV) {
-                apv = o.val;
-                break;
-            }
-        }
+        let apv = this.getAPV();
         
         if(this.isWeighted()) {
             apv =  parseFloat((apv * weight / 100.0).toFixed(3));
@@ -23416,7 +23440,7 @@ if(!(typeof window === "undefined")) {
 }
 
 }).call(this,"/src/options.js")
-},{"./logger":182}],184:[function(require,module,exports){
+},{"./global":181,"./logger":182}],184:[function(require,module,exports){
 (function (process,__filename){
 var log = require("./logger").getLogger(__filename, 12);
 var Balance = require("./balancer");
@@ -23451,7 +23475,7 @@ class Votes extends Scanner {
 
         log.trace("\tupvote block " + block);
         //Учитывать только апвоты с последней выплаты
-        if(this.minBlock < block && op == "vote" && opBody.voter == this.userid) {
+        if(this.minBlock < block && op == "vote" && opBody.voter == this.userid && opBody.author != this.userid) {
             log.info("\tfound upvote of " + this.userid + " (" + (opBody.weight / 100) + ") " + opBody.author + "/" + opBody.permlink);
             this.votes.push(opBody);
         }
@@ -23468,18 +23492,18 @@ class Balances extends Scanner {
         this.dobrobot = dobrobot;
     }
     
-    plus(userid, amount, currency, block, opt) {
+    plus(userid, amount, currency, block, opt, fromUserId) {
         if(this.balances[userid]) {
         } else {
             this.balances[userid] = new Balance();
         }
         
         log.trace("\tadd " + userid + " " + amount + " " + currency);
-        this.balances[userid].plus(amount, currency, block, opt);
+        this.balances[userid].plus(amount, currency, block, opt, fromUserId);
     }
     
     minus(userid, amount, currency, block) {
-        this.plus(userid, -1 * amount, currency, block, null);
+        this.plus(userid, -1 * amount, currency, block, null, null);
     }
     
     process(historyEntry) {
@@ -23517,20 +23541,22 @@ class Balances extends Scanner {
                 let opt = opBody.memo;
                 let userid = opBody.from;
                 let m = options.isUserTransfer(opt);
-                log.debug(JSON.stringify(m));
+                //log.debug(JSON.stringify(m));
                 if(m) {
                     userid = m[1];
-                    opt = "0.001";
+                    opt = null;
                 }
                 log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
 
                 log.trace("csv\t" + userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
-                this.plus(userid, amount, currency, block, opt);
+                this.plus(userid, amount, currency, block, opt, opBody.from);
             }
         }
         return false;
     }    
 }
+
+module.exports.Scanner = Scanner;
 module.exports.Votes = Votes;
 module.exports.Balances = Balances;
 
