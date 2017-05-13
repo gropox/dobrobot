@@ -16,11 +16,26 @@ class Currency {
        this.name = name;
        this.amount = 0.0;
        this.opt = new OpStack();
+       this.income = false;
+       this.incomeBlock = 0;
+       this.incomeUserId = null;
     }
 
-    plus(amount) {
+    plus(amount, block, fromUserId) {
         this.amount += amount;
         this.amount = parseFloat(this.amount.toFixed(3));
+        
+        //Определяем, было ли пополнение баланса, 
+        // что бы потом проинформировать пользователя 
+        if(block > this.incomeBlock) {
+            if(amount >= global.MIN_AMOUNT) {
+                this.income = true;
+                this.incomeUserId = fromUserId;
+            } else {
+                this.income = false;
+            }
+            this.incomeBlock = block;
+        }
     }
     
     reduce(amount) {
@@ -81,9 +96,9 @@ class Balance {
         this.GOLOS = new Currency("GOLOS");
     }
     
-    plus(amount, currency, block, opt) {
+    plus(amount, currency, block, opt, fromUserId) {
         log.trace("\tadd " + amount + " " + currency);
-        this[currency].plus(amount);
+        this[currency].plus(amount, block, fromUserId);
         if(opt) {
             this[currency].opt.push(opt, block);
         }
@@ -99,6 +114,10 @@ class Balance {
         log.debug("this.GOLOS.isAvailable(1) = " + golos);
         log.debug("this.GBG.isAvailable(1) = " + gbg);
         return golos || gbg;
+    }
+    
+    toString() {
+        return  `GBG = { amount : ${this.GBG.amount}, act : ${this.GBG.opt.isActive()}}, GOLOS = { amount : ${this.GOLOS.amount}, act : ${this.GOLOS.opt.isActive()}}`;
     }
     
     getAmount(weight) {

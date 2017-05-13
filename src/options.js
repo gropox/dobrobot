@@ -84,6 +84,18 @@ class OptStack {
         stackOption(this, opt, block);
     }
     
+    getAPV() {
+        let apv = 0;
+        
+        for( let o of this.stack) {
+            if(o.type == OPTIONS.APV) {
+                apv = o.val;
+                break;
+            }
+        }
+        return apv;
+    }
+    
     getAmountPerVote(w) {
         if(!this.isActive()) {
             throw "RuntimeException: currency is not active!";
@@ -94,14 +106,7 @@ class OptStack {
             weight = parseFloat(w);
         }
         
-        let apv = null;
-        
-        for( let o of this.stack) {
-            if(o.type == OPTIONS.APV) {
-                apv = o.val;
-                break;
-            }
-        }
+        let apv = this.getAPV();
         
         if(this.isWeighted()) {
             apv =  parseFloat((apv * weight / 100.0).toFixed(3));

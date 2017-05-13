@@ -55,14 +55,49 @@ async function getBalances() {
 /**
  * перевод денег пользователям из черного списка. 
  */
-async function refund(userid, bal) {
+async function refundBlacklisted(userid, bal) {
     log.info("\tsponsor blacklisted, refund");
-
+    let to = userid;
     if(bal.GOLOS.amount >= global.MIN_AMOUNT) {
-        await golos.transfer(userid, bal.GOLOS.amount, "GOLOS", userid + " Возврат");
+        if(bal.GOLOS.incomeUserId) {
+            to = bal.GOLOS.incomeUserId;
+        }
+        await golos.transfer(to, bal.GOLOS.amount, bal.GOLOS.name, userid + " в черном списке");
     }
     if(bal.GBG.amount >= global.MIN_AMOUNT) {
-        await golos.transfer(userid, bal.GBG.amount, "GBG", userid + " Возврат");
+        if(bal.GBG.incomeUserId) {
+            to = bal.GBG.incomeUserId;
+        }
+        await golos.transfer(to, bal.GBG.amount, bal.GBG.name, userid + " в черном списке");
+    }
+}
+
+/**
+ * перевод денег неизвестных пользователей. 
+ */
+async function refundUnknown(userid, bal) {
+    log.info("\t unknown userid " + userid + ", refund");
+    
+    let to = userid;
+    if(bal.GOLOS.amount >= global.MIN_AMOUNT) {
+        if(bal.GOLOS.incomeUserId) {
+            to = bal.GOLOS.incomeUserId;
+            await golos.transfer(to, bal.GOLOS.amount, bal.GOLOS.name, userid + " - несуществующий аккаунт");
+        }
+    }
+    if(bal.GBG.amount >= global.MIN_AMOUNT) {
+        if(bal.GBG.incomeUserId) {
+            to = bal.GBG.incomeUserId;
+        }
+        await golos.transfer(to, bal.GBG.amount, bal.GBG.name, userid + " - несуществующий аккаунт");
+    }
+}
+
+async function notifyIncome(userid, currency) {
+    if(currency.income && currency.amount >= global.MIN_AMOUNT) {
+        let sum = currency.amount - global.MIN_AMOUNT;
+        await golos.transfer(userid, global.MIN_AMOUNT, currency.name, 
+            `${userid} Ваш баланс добра был пополнен, сумма = ${sum.toFixed(3)} ${currency.name}, д/г = ${currency.opt.getAPV()}`);
     }
 }
 
@@ -91,15 +126,29 @@ Scan for balances, current block ${props.block}
             let users = Object.keys(balances);
             
             for(let userid of users) {
-                log.info("balance " + userid + " : " + JSON.stringify(balances[userid]));
+                log.info("balance " + String(userid + "               ").substring(0,15) + " : " + balances[userid].toString());
             }
             
             for(let userid of users) {
                 log.debug("process " + userid);
+                
+                if(balances[userid].GBG.amount > global.MIN_AMOUNT 
+                    || balances[userid].GOLOS.amount > global.MIN_AMOUNT) {
+                    log.debug("check userid " + userid);
+                    let known = await golos.checkUser(userid);
+                    log.debug("userid " + known);
+                    if(!known) {
+                        refundUnknown(userid, balances[userid]);
+                        continue;
+                    }
+                }
+                
                 if(global.settings.blacklistSponsors.includes(userid)) {
-                    await refund(userid,  balances[userid]);
+                    await refundBlacklisted(userid,  balances[userid]);
                     continue;
                 }
+                await notifyIncome(userid, balances[userid].GBG);
+                await notifyIncome(userid, balances[userid].GOLOS);
                 await honor(userid, balances[userid]);
             }
             

@@ -48,18 +48,18 @@ class Balances extends Scanner {
         this.dobrobot = dobrobot;
     }
     
-    plus(userid, amount, currency, block, opt) {
+    plus(userid, amount, currency, block, opt, fromUserId) {
         if(this.balances[userid]) {
         } else {
             this.balances[userid] = new Balance();
         }
         
         log.trace("\tadd " + userid + " " + amount + " " + currency);
-        this.balances[userid].plus(amount, currency, block, opt);
+        this.balances[userid].plus(amount, currency, block, opt, fromUserId);
     }
     
     minus(userid, amount, currency, block) {
-        this.plus(userid, -1 * amount, currency, block, null);
+        this.plus(userid, -1 * amount, currency, block, null, null);
     }
     
     process(historyEntry) {
@@ -97,20 +97,22 @@ class Balances extends Scanner {
                 let opt = opBody.memo;
                 let userid = opBody.from;
                 let m = options.isUserTransfer(opt);
-                log.debug(JSON.stringify(m));
+                //log.debug(JSON.stringify(m));
                 if(m) {
                     userid = m[1];
-                    opt = "0.001";
+                    opt = null;
                 }
                 log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
 
                 log.trace("csv\t" + userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
-                this.plus(userid, amount, currency, block, opt);
+                this.plus(userid, amount, currency, block, opt, opBody.from);
             }
         }
         return false;
     }    
 }
+
+module.exports.Scanner = Scanner;
 module.exports.Votes = Votes;
 module.exports.Balances = Balances;
 
