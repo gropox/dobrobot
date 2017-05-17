@@ -22963,15 +22963,21 @@ var steem = require("steem");
 var global = require("./global");
 var OpStack = require("./options");
 
+const CURRENCY = {
+    GOLOS : "GOLOS",
+    GBG : "GBG"
+}
+
 class Amount {
-    constructor(name) {
+    constructor(name, sanchita) {
         this.amount = 0;
         this.currency = name;
-        this.zero = false;       
+        this.zero = false;
+        this.sanchita = sanchita && name == CURRENCY.GOLOS; //санчита только для голоса
     }
 }
 
-class Currency {
+class CurrencyValue {
     constructor(name) {
        this.name = name;
        this.amount = 0.0;
@@ -23012,7 +23018,7 @@ class Currency {
     
     calcTransferAmount(weight) {
         
-        let amount = new Amount(this.name);
+        let amount = new Amount(this.name, this.opt.isSanchita());
         
         if(!this.opt.isActive()) {
             return amount;
@@ -23052,8 +23058,8 @@ class Balance {
     
     constructor() {
         this.minBlock = 0;
-        this.GBG = new Currency("GBG");
-        this.GOLOS = new Currency("GOLOS");
+        this.GBG = new CurrencyValue(CURRENCY.GBG);
+        this.GOLOS = new CurrencyValue(CURRENCY.GOLOS);
     }
     
     plus(amount, currency, block, opt, fromUserId) {
@@ -23093,7 +23099,7 @@ class Balance {
         }
 
         if(!currency) {
-            return new Amount("GOLOS");
+            return new Amount("GOLOS", false);
         }
         
         let amount = currency.calcTransferAmount(weight);
@@ -23303,6 +23309,8 @@ const OPTIONS = {
     START : "старт",
     WHALE: "кит",
     FISH: "рыба",
+    SANCHITA: "санчита",
+    KRIYAMANA: "криямана"    
 };
 
 function checkSwitch(o, option, types) {
@@ -23315,6 +23323,8 @@ function getStackIndex(stack, option) {
         if(checkSwitch(stack[i], option, [OPTIONS.STOP, OPTIONS.START])) {
             return i;
         } else if(checkSwitch(stack[i], option, [OPTIONS.WHALE, OPTIONS.FISH])) {
+            return i;
+        } else if(checkSwitch(stack[i], option, [OPTIONS.SANCHITA, OPTIONS.KRIYAMANA])) {
             return i;
         } else {
             if(stack[i].type == option.type) {
@@ -23332,6 +23342,9 @@ function buildOption(opt, block) {
         
         case "/кит": return new Option(OPTIONS.WHALE, opt, block);
         case "/рыба": return new Option(OPTIONS.FISH, opt, block);
+
+        case "/санчита": return new Option(OPTIONS.SANCHITA, opt, block);
+        case "/криямана": return new Option(OPTIONS.KRIYAMANA, opt, block);
     }
     
     //apv
@@ -23340,7 +23353,7 @@ function buildOption(opt, block) {
     }
     
     //остановить бота, по незнакомой команде.
-    return new Option(OPTIONS.STOP, opt, block);
+    return null;
 }
 
 class OptStack {
@@ -23354,19 +23367,22 @@ class OptStack {
         function stackOption(ops, opt, block) {
             let stack = ops.stack;
             let option = buildOption(opt, block);
-            let update = false;
-            let idx = getStackIndex(stack, option);
-            if(idx < stack.length) {
-                if(stack[idx].block < option.block) {
-                    stack[idx] = option;
+            if(option) {
+                let update = false;
+                
+                let idx = getStackIndex(stack, option);
+                if(idx < stack.length) {
+                    if(stack[idx].block < option.block) {
+                        stack[idx] = option;
+                        update = true;
+                    }
+                } else {
+                    stack.push(option);
                     update = true;
                 }
-            } else {
-                stack.push(option);
-                update = true;
-            }
-            if(update && option.type == OPTIONS.APV) {
-                ops.push("/старт", block);
+                if(update && option.type == OPTIONS.APV) {
+                    ops.push("/старт", block);
+                }
             }
         }        
         
@@ -23412,6 +23428,15 @@ class OptStack {
         return false;
     }    
     
+    isSanchita() {
+        for( let o of this.stack) {
+            if(o.type == OPTIONS.SANCHITA) {
+                return true;
+            }
+        }
+        return false;
+    }    
+
     isActive() {
         let active = false; 
         for( let o of this.stack) {
@@ -23475,7 +23500,10 @@ class Votes extends Scanner {
 
         log.trace("\tupvote block " + block);
         //Учитывать только апвоты с последней выплаты
-        if(this.minBlock < block && op == "vote" && opBody.voter == this.userid && opBody.author != this.userid) {
+        if(this.minBlock < block && op == "vote" 
+            && opBody.voter == this.userid 
+            && opBody.author != this.userid
+            && opBody.weight > 0) {
             log.info("\tfound upvote of " + this.userid + " (" + (opBody.weight / 100) + ") " + opBody.author + "/" + opBody.permlink);
             this.votes.push(opBody);
         }
