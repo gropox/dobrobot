@@ -3,15 +3,21 @@ var steem = require("steem");
 var global = require("./global");
 var OpStack = require("./options");
 
+const CURRENCY = {
+    GOLOS : "GOLOS",
+    GBG : "GBG"
+}
+
 class Amount {
-    constructor(name) {
+    constructor(name, sanchita) {
         this.amount = 0;
         this.currency = name;
-        this.zero = false;       
+        this.zero = false;
+        this.sanchita = sanchita && name == CURRENCY.GOLOS; //санчита только для голоса
     }
 }
 
-class Currency {
+class CurrencyValue {
     constructor(name) {
        this.name = name;
        this.amount = 0.0;
@@ -52,7 +58,7 @@ class Currency {
     
     calcTransferAmount(weight) {
         
-        let amount = new Amount(this.name);
+        let amount = new Amount(this.name, this.opt.isSanchita());
         
         if(!this.opt.isActive()) {
             return amount;
@@ -92,8 +98,8 @@ class Balance {
     
     constructor() {
         this.minBlock = 0;
-        this.GBG = new Currency("GBG");
-        this.GOLOS = new Currency("GOLOS");
+        this.GBG = new CurrencyValue(CURRENCY.GBG);
+        this.GOLOS = new CurrencyValue(CURRENCY.GOLOS);
     }
     
     plus(amount, currency, block, opt, fromUserId) {
@@ -133,7 +139,7 @@ class Balance {
         }
 
         if(!currency) {
-            return new Amount("GOLOS");
+            return new Amount("GOLOS", false);
         }
         
         let amount = currency.calcTransferAmount(weight);

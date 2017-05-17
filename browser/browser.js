@@ -62,7 +62,7 @@ function scanHistory() {
                 ret += comma + OPTIONS.APV + "=" + o.val;
                 comma = "<br/>";
             } else {
-                if(OPTIONS.WHALE != o.type) {
+                if(OPTIONS.WHALE != o.type && OPTIONS.KRIYAMANA != o.type) {
                     ret += comma + o.type;
                     comma = "<br/>";
                 }

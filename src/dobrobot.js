@@ -25,7 +25,15 @@ async function transferHonor(userid, balance) {
         
         let amount = balance.getAmount(vote.weight / 100);
         if(amount.amount > 0) {
-            await golos.transfer(vote.author, amount.amount, amount.currency, `${userid} проголосовал за ваш пост/комментарий ${vote.permlink}`);
+            let text = `${userid} проголосовал за ваш пост/комментарий ${vote.permlink}`;
+            
+            if(amount.sanchita && amount.amount > global.MIN_AMOUNT) {
+                let amk = amount.amount - global.MIN_AMOUNT;
+                amount.amount = global.MIN_AMOUNT;
+                await golos.transferKarma(vote.author, amk);
+                text = `${userid} поднял вам карму за ваш пост/комментарий ${vote.permlink}`;
+            }
+            await golos.transfer(vote.author, amount.amount, amount.currency, text);
         }
         if(amount.zero) {
             await golos.transfer(userid, global.MIN_AMOUNT, amount.currency, `${userid} добро на вашем балансе иссякло`);

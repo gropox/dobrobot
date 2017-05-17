@@ -41,14 +41,16 @@ async function checkGoodFlood()  {
 }
 
 async function check() {
-    var scanner = new Scanner.Balances("dobrobot", 5691376);
-    await golos.scanUserHistory("dobrobot", scanner);
+    var scanner = new Scanner.Balances("dbot", 0);
+    await golos.scanUserHistory("dbot", scanner);
     
     let balances = scanner.balances;
     let users = Object.keys(balances);
     
     for(let userid of users) {
         log.info("balance " + String(userid + "                    ").substring(0,20) + " : " + balances[userid].toString());
+        log.info(" sanchita = " + balances[userid].GOLOS.opt.isSanchita());
+        log.info(JSON.stringify(balances[userid].GOLOS.calcTransferAmount(100)));
     }
                 
     process.exit(123);
