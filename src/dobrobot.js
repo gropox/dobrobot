@@ -57,6 +57,10 @@ async function getBalances() {
     let balancesScanner = new Scanner.Balances(global.settings.dobrobot, global.settings.minBlock);
     await golos.scanHistory(balancesScanner);
     
+    for(tv of balancesScanner.transfer_to_vesting) {
+        log.warn("unused transfer to vesting " + JSON.stringify(tv));
+    }
+    
     return balancesScanner.balances;
 }
 

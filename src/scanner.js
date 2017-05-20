@@ -49,6 +49,7 @@ class Balances extends Scanner {
         this.balances = {};
         this.minBlock = minBlock;
         this.dobrobot = dobrobot;
+        this.transfer_to_vesting = [];
     }
     
     plus(userid, amount, currency, block, opt, fromUserId) {
@@ -85,6 +86,17 @@ class Balances extends Scanner {
                 let currency = opBody.amount.split(" ")[1];
                 //пример memo: userid благодарит за permlink 
                 let userid = opBody.memo.split(" ")[0];
+                
+                //check vesting
+                var trVesting = this.transfer_to_vesting.pop();
+                if(trVesting) {
+                    if(trVesting.to = opBody.to) {
+                        let va = parseFloat(trVesting.amount.split(" ")[0]);
+                        amount += va;
+                    } else {
+                        this.transfer_to_vesting.push(trVesting);
+                    }
+                }
 
                 log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
 
@@ -109,6 +121,12 @@ class Balances extends Scanner {
 
                 log.trace("csv\t" + userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
                 this.plus(userid, amount, currency, block, opt, opBody.from);
+            }
+        }
+        if(op == "transfer_to_vesting") {
+            // Исходящий перевод - отнимаем от баланса
+            if(opBody.from == this.dobrobot) {
+                this.transfer_to_vesting.push(opBody);
             }
         }
         return false;
