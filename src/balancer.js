@@ -9,11 +9,11 @@ const CURRENCY = {
 }
 
 class Amount {
-    constructor(name, sanchita) {
+    constructor(name, opt) {
         this.amount = 0;
         this.currency = name;
         this.zero = false;
-        this.sanchita = sanchita && name == CURRENCY.GOLOS; //санчита только для голоса
+        this.opt = opt;
     }
 }
 
@@ -58,7 +58,7 @@ class CurrencyValue {
     
     calcTransferAmount(weight) {
         
-        let amount = new Amount(this.name, this.opt.isSanchita());
+        let amount = new Amount(this.name, this.opt);
         
         if(!this.opt.isActive()) {
             return amount;
@@ -139,7 +139,7 @@ class Balance {
         }
 
         if(!currency) {
-            return new Amount("GOLOS", false);
+            return new Amount("GOLOS", this.opt);
         }
         
         let amount = currency.calcTransferAmount(weight);
@@ -158,6 +158,7 @@ class Balance {
     }    
 }
 
+Balance.CURRENCY = CURRENCY;
 
 module.exports = Balance;
 

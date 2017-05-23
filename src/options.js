@@ -15,7 +15,10 @@ const OPTIONS = {
     WHALE: "кит",
     FISH: "рыба",
     SANCHITA: "санчита",
-    KRIYAMANA: "криямана"    
+    KRIYAMANA: "криямана",    
+    PRARADBHA: "прарабдха",
+    CURATOR: "куратор",
+    MOTH: "мот"
 };
 
 function checkSwitch(o, option, types) {
@@ -29,7 +32,7 @@ function getStackIndex(stack, option) {
             return i;
         } else if(checkSwitch(stack[i], option, [OPTIONS.WHALE, OPTIONS.FISH])) {
             return i;
-        } else if(checkSwitch(stack[i], option, [OPTIONS.SANCHITA, OPTIONS.KRIYAMANA])) {
+        } else if(checkSwitch(stack[i], option, [OPTIONS.SANCHITA, OPTIONS.KRIYAMANA, OPTIONS.PRARADBHA])) {
             return i;
         } else {
             if(stack[i].type == option.type) {
@@ -50,6 +53,10 @@ function buildOption(opt, block) {
 
         case "/санчита": return new Option(OPTIONS.SANCHITA, opt, block);
         case "/криямана": return new Option(OPTIONS.KRIYAMANA, opt, block);
+        case "/прарабдха": return new Option(OPTIONS.PRARADBHA, opt, block);
+        
+        case "/куратор": return new Option(OPTIONS.CURATOR, opt, block);
+        case "/мот": return new Option(OPTIONS.MOTH, opt, block);        
     }
     
     //apv
@@ -57,7 +64,6 @@ function buildOption(opt, block) {
         return new Option(OPTIONS.APV, parseFloat(opt), block);
     }
     
-    //остановить бота, по незнакомой команде.
     return null;
 }
 
@@ -65,6 +71,7 @@ class OptStack {
     constructor() {
         this.stack = [];
         this.push("/кит", 0); //по умолчанию все киты
+        this.push("/куратор", 0); //по умолчанию все кураторы
     }
 
     push(opt, block) {
@@ -142,14 +149,29 @@ class OptStack {
         return false;
     }    
 
+    isPrarabdha() {
+        for( let o of this.stack) {
+            if(o.type == OPTIONS.PRARADBHA) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    isCurator() {
+        for( let o of this.stack) {
+            if(o.type == OPTIONS.CURATOR) {
+                return true;
+            }
+        }
+        return false;
+    }
+    
     isActive() {
-        let active = false; 
+        let active = true; 
         for( let o of this.stack) {
             if(o.type == OPTIONS.STOP) {
                 return false;
-            }
-            if(o.type == OPTIONS.APV) {
-                active = true;
             }
         }
         return active;

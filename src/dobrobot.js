@@ -2,7 +2,54 @@ var global = require("./global");
 var log = require("./logger").getLogger(__filename);
 var golos = require("./golos");
 var Scanner = require("./scanner");
+var Balancer = require("./balancer");
 
+async function processVote(userid, userRep, balance, vote) {
+    if(vote.weight <= 0) {
+        log.debug("flag found " + vote.author + "/" + vote.permlink);
+        return;
+    }
+    if(global.settings.ignorelistAuthors.includes(vote.author)) {
+        log.trace("author ignored " + vote.author + "/" + vote.permlink);
+        return;
+    }
+    
+    let amount = balance.getAmount(vote.weight / 100);
+    if(amount.amount > 0) {
+        
+        if(amount.opt.isCurator()) {
+            let votedRep = await golos.getReputation(vote.author);
+            log.debug("\tcheck reputation " + (userRep - votedRep));
+            if((userRep - votedRep) < 0) {
+                log.debug("\t\t potential curator");
+                return ;
+            }
+        }
+        
+        let text = `${userid} проголосовал за ваш пост/комментарий ${vote.permlink}`;
+        
+        log.debug("sanchita = " + amount.opt.isSanchita());
+        log.debug("prarabdha = " + amount.opt.isPrarabdha());
+        log.debug("GOLOS = " + (amount.currency == Balancer.CURRENCY.GOLOS));
+        
+        if(amount.amount > global.MIN_AMOUNT && 
+                amount.currency == Balancer.CURRENCY.GOLOS && 
+                (amount.opt.isSanchita() || amount.opt.isPrarabdha())) {
+            let reduce = global.MIN_AMOUNT;
+            if(amount.opt.isPrarabdha()) {
+                reduce = parseFloat((amount.amount / 2.0).toFixed(3));
+            }
+            let amk = amount.amount - reduce;
+            amount.amount = reduce;
+            await golos.transferKarma(vote.author, amk);
+            text = `${userid} поднял вам карму за ваш пост/комментарий ${vote.permlink}`;
+        }
+        await golos.transfer(vote.author, amount.amount, amount.currency, text);
+    }
+    if(amount.zero) {
+        await golos.transfer(userid, global.MIN_AMOUNT, amount.currency, `${userid} добро на вашем балансе иссякло`);
+    }
+}
 
 async function transferHonor(userid, balance) {
 
@@ -10,35 +57,19 @@ async function transferHonor(userid, balance) {
     await golos.scanUserHistory(userid, voteScanner);
     let votes = voteScanner.votes;
     
-    votes.sort((a,b) => {
-        return a.block - b.block;
-    });
-    
-    for(let vote of votes) {    
-        if(vote.weight <= 0) {
-            log.debug("flag found " + vote.author + "/" + vote.permlink);
-        }
-        if(global.settings.ignorelistAuthors.includes(vote.author)) {
-            log.trace("author ignored " + vote.author + "/" + vote.permlink);
-            continue;
-        }
+    if(votes.length > 0) {
         
-        let amount = balance.getAmount(vote.weight / 100);
-        if(amount.amount > 0) {
-            let text = `${userid} проголосовал за ваш пост/комментарий ${vote.permlink}`;
-            
-            if(amount.sanchita && amount.amount > global.MIN_AMOUNT) {
-                let amk = amount.amount - global.MIN_AMOUNT;
-                amount.amount = global.MIN_AMOUNT;
-                await golos.transferKarma(vote.author, amk);
-                text = `${userid} поднял вам карму за ваш пост/комментарий ${vote.permlink}`;
-            }
-            await golos.transfer(vote.author, amount.amount, amount.currency, text);
+        votes.sort((a,b) => {
+            return a.block - b.block;
+        });
+
+        let userRep = await golos.getReputation(userid);
+        //максимально 10 апвотов, что бы не перегружать
+        for(let i = 0; i < votes.length && i < 10; i++) {    
+            await processVote(userid, userRep, balance, votes[i]);
         }
-        if(amount.zero) {
-            await golos.transfer(userid, global.MIN_AMOUNT, amount.currency, `${userid} добро на вашем балансе иссякло`);
-        }
-    }
+    
+   }
 }
 
 async function honor(userid, balance) {
