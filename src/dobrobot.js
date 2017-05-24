@@ -64,8 +64,8 @@ async function transferHonor(userid, balance) {
         });
 
         let userRep = await golos.getReputation(userid);
-        //максимально 10 апвотов, что бы не перегружать
-        for(let i = 0; i < votes.length && i < 10; i++) {    
+        //максимально 40 апвотов, что бы не перегружать
+        for(let i = 0; i < votes.length && i < 40; i++) {    
             await processVote(userid, userRep, balance, votes[i]);
         }
     
