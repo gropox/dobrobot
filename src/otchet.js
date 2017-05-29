@@ -132,6 +132,7 @@ class Report extends Scanner.Scanner {
         if(amount < 0) {
             if(vesting) {
                 userStats.vesting += Math.abs(amount);
+                log.debug("increased vesting of " + userid + " to " + userStats.vesting);
             } else {
                 userStats[currency].payOut += Math.abs(amount);
             }    
@@ -192,10 +193,11 @@ class Report extends Scanner.Scanner {
             //check vesting
             var trVesting = this.transfer_to_vesting.pop();
             if(trVesting) {
-                if(trVesting.to = transfer.to) {
+                if(trVesting.to == transfer.to) {
                     let va = parseFloat(trVesting.amount.split(" ")[0]);
-
-                    this.updateUserStats(userid, -1 * va, currency, true);
+                    
+                    log.debug("vesting transfer from " + userid + ", am = " + va);
+                    this.updateUserStats(userid, -1 * va, currency, null,  true);
                     this.updateAuthorStats(transfer.to, va, currency,  true);
                     this.updatePostStats(transfer.to, permlink, va, currency, true);
                     
