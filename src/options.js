@@ -102,7 +102,7 @@ class OptStack {
     }
     
     getAPV() {
-        let apv = global.MIN_AMOUNT;
+        let apv = 0.01;
         
         for( let o of this.stack) {
             if(o.type == OPTIONS.APV) {
