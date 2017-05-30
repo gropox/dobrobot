@@ -34,6 +34,8 @@ function getStackIndex(stack, option) {
             return i;
         } else if(checkSwitch(stack[i], option, [OPTIONS.SANCHITA, OPTIONS.KRIYAMANA, OPTIONS.PRARADBHA])) {
             return i;
+        } else if(checkSwitch(stack[i], option, [OPTIONS.CURATOR, OPTIONS.MOTH])) {
+            return i;
         } else {
             if(stack[i].type == option.type) {
                 return i;
@@ -175,6 +177,16 @@ class OptStack {
             }
         }
         return active;
+    }
+    
+    toString() {
+        let ret = "";
+        let comma = "";
+        for(let o of this.stack) {
+            ret += comma + o.val;
+            comma = ",";
+        }
+        return ret;
     }
 }
 

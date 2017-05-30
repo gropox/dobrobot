@@ -123,7 +123,7 @@ class Balance {
     }
     
     toString() {
-        return  `GBG = { amount : ${this.GBG.amount}, act : ${this.GBG.opt.isActive()}}, GOLOS = { amount : ${this.GOLOS.amount}, act : ${this.GOLOS.opt.isActive()}}`;
+        return  `GBG = { amount : ${this.GBG.amount}, opts : ${this.GBG.opt.toString()}}, GOLOS = { amount : ${this.GOLOS.amount}, opts : ${this.GOLOS.opt.toString()}`;
     }
     
     getAmount(weight) {

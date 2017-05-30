@@ -140,7 +140,7 @@ async function notifyIncome(userid, currency) {
     if(currency.income && currency.amount >= global.MIN_AMOUNT) {
         let sum = currency.amount - global.MIN_AMOUNT;
         await golos.transfer(userid, global.MIN_AMOUNT, currency.name, 
-            `${userid} Ваш баланс добра был пополнен, сумма = ${sum.toFixed(3)} ${currency.name}, д/г = ${currency.opt.getAPV()}`);
+            `${userid} Ваш баланс добра был пополнен, сумма = ${sum.toFixed(3)} ${currency.name}, опции = ${currency.opt.toString()}`);
     }
 }
 
