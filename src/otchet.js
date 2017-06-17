@@ -5,8 +5,19 @@ var Scanner = require("./scanner");
 var options = require("./options");
 var fs = require("fs");
 
-const REPORT_DURATION = 1000 * 60 * 60 * 24 * 7; //one week
+const REPORT_DURATION = 1000 * 60 * 60 * 24 * 28; //one week
+const LIST_COUNT = 140;
 
+var USER_GESTS = {};
+
+async function getUserGests(userid) {
+
+    if(!USER_GESTS[userid]) {
+        USER_GESTS[userid] = await golos.getUserGests(userid);
+    }
+    
+    return USER_GESTS[userid];
+}
 
 class FindLastReport extends Scanner.Scanner {
     constructor() {
@@ -76,11 +87,11 @@ class UserStats {
     }
     
     calcSumOut(price) {
-        return this.GOLOS.payOut + 
+        return this.GOLOS.payOut + this.vesting + 
         (this.GBG.payOut / price);
     }
     calcSumIn(price) {
-        return this.GOLOS.payIn + 
+        return this.GOLOS.payIn +
         (this.GBG.payIn / price);
     }
     
@@ -229,17 +240,17 @@ class Report extends Scanner.Scanner {
 }
 
 
-function printMostPayOut(stats, price) {
+async function printMostPayOut(stats, price) {
     let ret = "";
     let users = Object.keys(stats.users);
     users.sort((a,b) => {
         return stats.users[b].calcSumOut(price) - stats.users[a].calcSumOut(price);
     });
     
-    for(var i = 0; i < users.length && i < 20; i++) {
+    for(var i = 0; i < users.length && i < LIST_COUNT; i++) {
         let us = stats.users[users[i]];
 
-        ret += `@${us.userid} | ${us.GOLOS.payOut.toFixed(3)} | ${us.GBG.payOut.toFixed(3)} | ${us.vesting.toFixed(3)}
+        ret += `@${us.userid} | ${await getUserGests(us.userid)} | ${us.GOLOS.payOut.toFixed(3)} | ${us.GBG.payOut.toFixed(3)} | ${us.vesting.toFixed(3)}
 `;
     }
     return ret;
@@ -253,33 +264,33 @@ function getCurators(curators) {
     }    
 }
 
-function printMostPayIn(stats, price) {
+async function printMostPayIn(stats, price) {
     let ret = "";
     let users = Object.keys(stats.users);
     users.sort((a,b) => {
         return stats.users[b].calcSumIn(price) - stats.users[a].calcSumIn(price);
     });
     
-    for(var i = 0; i < users.length && i < 20; i++) {
+    for(var i = 0; i < users.length && i < LIST_COUNT; i++) {
         let us = stats.users[users[i]];
 
-        ret += `@${us.userid} | ${us.GOLOS.payIn.toFixed(3)} | ${us.GBG.payIn.toFixed(3)} | ${getCurators(us.curators)}
+        ret += `@${us.userid} | ${await getUserGests(us.userid)} | ${us.GOLOS.payIn.toFixed(3)} | ${us.GBG.payIn.toFixed(3)} | ${getCurators(us.curators)}
 `;
     }
     return ret;
 }
 
-function printMostPayedAuthors(stats, price) {
+async function printMostPayedAuthors(stats, price) {
     let ret = "";
     let authors = Object.keys(stats.authors);
     authors.sort((a,b) => {
         return stats.authors[b].calcSumIn(price) - stats.authors[a].calcSumIn(price);
     });
     
-    for(var i = 0; i < authors.length && i < 20; i++) {
+    for(var i = 0; i < authors.length && i < LIST_COUNT; i++) {
         let us = stats.authors[authors[i]];
 
-        ret += `@${us.userid} | ${us.GOLOS.payIn.toFixed(3)} | ${us.GBG.payIn.toFixed(3)} | ${us.vesting.toFixed(3)}
+        ret += `@${us.userid} | ${await getUserGests(us.userid)} | ${us.GOLOS.payIn.toFixed(3)} | ${us.GBG.payIn.toFixed(3)} | ${us.vesting.toFixed(3)}
 `;
     }
     return ret;
@@ -292,14 +303,14 @@ async function printMostPayedPosts(stats, price) {
         return stats.posts[b].calcSumIn(price) - stats.posts[a].calcSumIn(price);
     });
     
-    for(var i = 0; i < posts.length && i < 20; i++) {
+    for(var i = 0; i < posts.length && i < LIST_COUNT; i++) {
         let us = stats.posts[posts[i]];
 
         let content = await golos.getContent(us.author, us.permlink);
         if(null == content) {
             continue;
         }
-        ret += `@${us.author} | [${content.title}](${global.settings.golos_host}/@${posts[i]}) | ${us.GOLOS.payIn.toFixed(3)} | ${us.GBG.payIn.toFixed(3)} | ${us.vesting.toFixed(3)}
+        ret += `@${us.author} | ${await getUserGests(us.author)} | [${content.title.replace(/\|/g,",")}](${global.settings.golos_host}/@${posts[i]}) | ${us.GOLOS.payIn.toFixed(3)} | ${us.GBG.payIn.toFixed(3)} | ${us.vesting.toFixed(3)}
 `;
     }
     return ret;
@@ -330,31 +341,33 @@ async function printStats(stats, price) {
 
 Всего было перечислено доброботу ${stats.GOLOS.payIn.toFixed(3)} GOLOS и ${stats.GBG.payIn.toFixed(3)} GBG. Добробот в свою очередь перечислил ${stats.GOLOS.payOut.toFixed(3)} GOLOS и ${stats.GBG.payOut.toFixed(3)} GBG добра и увеличил силу голоса на общую сумму ${stats.allVesting.toFixed(3)} GOLOS.  
 
-## 20 Пользователей, больше всего перечисливших доброботу
+## ${LIST_COUNT} Пользователей, больше всего перечисливших доброботу
 
-Пользователь | Голоса | Золотые | Кураторы
-- | - | - | -
-${printMostPayIn(stats, price)}
-
-## 20 Кураторов, больше всего перечисливших добро авторам 
-
-Пользователь | Голоса | Золотые | Сила Голоса
-- | - | - | -
-${printMostPayOut(stats, price)}
- 
-## 20 Авторов, больше всего получивших вознаграждений 
-
-Автор | Голоса | Золотые | Сила Голоса
-- | - | - | -
-${printMostPayedAuthors(stats, price)}
-
-## 20 Постов, больше всего получивших вознаграждений 
-
-Автор | Пост | Голоса | Золотые | Сила Голоса
+Пользователь | СГ | Голоса | Золотые | Кураторы
 - | - | - | - | -
+${await printMostPayIn(stats, price)}
+
+## ${LIST_COUNT} Кураторов, больше всего перечисливших добро авторам 
+
+Пользователь | СГ | Голоса | Золотые | Сила Голоса
+- | - | - | - | -
+${await printMostPayOut(stats, price)}
+ 
+## ${LIST_COUNT} Авторов, больше всего получивших вознаграждений 
+
+Автор | СГ | Голоса | Золотые | Сила Голоса
+- | - | - | - | -
+${await printMostPayedAuthors(stats, price)}
+
+## ${LIST_COUNT} Постов, больше всего получивших вознаграждений 
+
+Автор | СГ | Пост | Голоса | Золотые | Сила Голоса
+- | - | - | - | - | -
 ${await printMostPayedPosts(stats, price)}
 
 Для сортировки таблиц золотые были переведены в голоса по актуальному на данный момент курсу ${price.toFixed(3)}.
+
+https://imgp.golos.io/0x0/http://d11302.edu35.ru/images/%D0%A0%D0%9E%D0%91%D0%9E%D0%A2.jpg
 
 `;
    log.debug(message);
@@ -362,7 +375,7 @@ ${await printMostPayedPosts(stats, price)}
 }
 
 function writeDebug(message) {
-    let file = "/tmp/dobrobot_report.txt";
+    let file = "/tmp/dobrobot_report.md";
     fs.writeFile(file, message, function(err) {
         if(err) {
             return console.log(err);
