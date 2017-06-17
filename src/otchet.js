@@ -5,7 +5,7 @@ var Scanner = require("./scanner");
 var options = require("./options");
 var fs = require("fs");
 
-const REPORT_DURATION = 1000 * 60 * 60 * 24 * 28; //one week
+const REPORT_DURATION = 1000 * 60 * 60 * 24 * 7; //one week
 const LIST_COUNT = 140;
 
 var USER_GESTS = {};
