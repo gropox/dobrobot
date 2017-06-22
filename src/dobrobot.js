@@ -200,7 +200,7 @@ Scan for balances, current block ${props.block}
             log.error(golos.getExceptionCause(e));
         }  
 
-        await sleep(1000*61*2); //sleep 2 minutes   
+        await sleep(1000*31); //sleep 31 seconds
     }
     log.err("broken loop");
     process.exit(1);

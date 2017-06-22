@@ -249,9 +249,11 @@ async function printMostPayOut(stats, price) {
     
     for(var i = 0; i < users.length && i < LIST_COUNT; i++) {
         let us = stats.users[users[i]];
-
-        ret += `@${us.userid} | ${await getUserGests(us.userid)} | ${us.GOLOS.payOut.toFixed(3)} | ${us.GBG.payOut.toFixed(3)} | ${us.vesting.toFixed(3)}
+        let sum = parseFloat(us.GOLOS.payOut.toFixed(3)) + parseFloat(us.GBG.payOut.toFixed(3)) + parseFloat(us.vesting.toFixed(3));
+        if(sum > 0) {
+            ret += `@${us.userid} | ${await getUserGests(us.userid)} | ${us.GOLOS.payOut.toFixed(3)} | ${us.GBG.payOut.toFixed(3)} | ${us.vesting.toFixed(3)}
 `;
+        }
     }
     return ret;
 }
@@ -273,9 +275,11 @@ async function printMostPayIn(stats, price) {
     
     for(var i = 0; i < users.length && i < LIST_COUNT; i++) {
         let us = stats.users[users[i]];
-
-        ret += `@${us.userid} | ${await getUserGests(us.userid)} | ${us.GOLOS.payIn.toFixed(3)} | ${us.GBG.payIn.toFixed(3)} | ${getCurators(us.curators)}
+        let sum = parseFloat(us.GOLOS.payIn.toFixed(3)) + parseFloat(us.GBG.payIn.toFixed(3));
+        if(sum > 0) {
+            ret += `@${us.userid} | ${await getUserGests(us.userid)} | ${us.GOLOS.payIn.toFixed(3)} | ${us.GBG.payIn.toFixed(3)} | ${getCurators(us.curators)}
 `;
+        }
     }
     return ret;
 }
