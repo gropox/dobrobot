@@ -152,9 +152,9 @@ module.exports.run = async function() {
 
             let props = await golos.getCurrentServerTimeAndBlock();
             
-            if(props.block < lastBlock) {
-                log.error(`Current retrieved block ${props.block} is smaller then last one ${lastblock}!`);
-                sleep(1000*60*3);
+            if(props.block <= lastBlock) {
+                log.info(`no changes, skip round`);
+                await sleep(1000*45);
                 continue;
             }
             lastBlock = props.block;
@@ -200,7 +200,7 @@ Scan for balances, current block ${props.block}
             log.error(golos.getExceptionCause(e));
         }  
 
-        await sleep(1000*31); //sleep 31 seconds
+        await sleep(1000*80); //sleep 80 seconds
     }
     log.err("broken loop");
     process.exit(1);
