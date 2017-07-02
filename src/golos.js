@@ -26,11 +26,11 @@ async function retrieveDynGlobProps() {
 async function getCurrentServerTimeAndBlock() {
     await retrieveDynGlobProps();
     if(props.time) { 
-        lastCommitedBlock = props.last_irreversible_block_num;
+        lastCommitedBlock = props.head_block_number;
         log.info("lastCommitedBlock = " + lastCommitedBlock + ", headBlock = " + props.head_block_number);
         return {
             time : Date.parse(props.time), 
-            block : props.last_irreversible_block_num 
+            block : props.head_block_number 
         };
     }
     throw "Current time could not be retrieved";
@@ -63,10 +63,6 @@ async function scanUserHistory(userid, scanner) {
             let terminate = false;
             for(let h = 0; h < userHistory.length; h++) {
                 log.trace("check hist id " + userHistory[h][0] + " / " + userHistory[h][1].op[0]);
-                if(userHistory[h][1].block > lastCommitedBlock) {
-                    log.trace("last commited block ("+lastCommitedBlock + ") < then tr block (" + userHistory[h][1].block+ ")");
-                    continue;
-                }
                 if(scanner.process(userHistory[h])) {
                     if(!terminate) {
                         terminate = true;

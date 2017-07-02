@@ -154,7 +154,7 @@ module.exports.run = async function() {
             
             if(props.block <= lastBlock) {
                 log.info(`no changes, skip round`);
-                await sleep(1000*45);
+                await sleep(1000*15);
                 continue;
             }
             lastBlock = props.block;
