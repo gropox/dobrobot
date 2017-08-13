@@ -76,6 +76,16 @@ class OptStack {
         this.push("/куратор", 0); //по умолчанию все кураторы
     }
 
+    toJson() {
+        return {
+            stack : this.stack
+        };
+    }
+
+    fromJson(json) {
+        this.stack = json.stack;
+    }
+
     push(opt, block) {
         
         function stackOption(ops, opt, block) {

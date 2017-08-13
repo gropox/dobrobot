@@ -1,6 +1,7 @@
-var log = require("./logger").getLogger(__filename, 12);
-var Balance = require("./balancer");
-var options = require("./options");
+const log = require("./logger").getLogger(__filename, 12);
+const Balance = require("./balancer");
+const options = require("./options");
+const global = require("./global");
 
 class Scanner {
 
@@ -29,9 +30,12 @@ class Votes extends Scanner {
         let opBody = historyEntry[1].op[1];
         opBody.block = block; //Для сортировки
 
+        if(block < this.minBlock) {
+            return true;
+        }
+
         log.trace("\tupvote block " + block);
-        //Учитывать только апвоты с последней выплаты
-        if(this.minBlock < block && op == "vote" 
+        if(op == "vote" 
             && opBody.voter == this.userid 
             && opBody.author != this.userid
             && opBody.weight > 0) {
@@ -39,17 +43,45 @@ class Votes extends Scanner {
             this.votes.push(opBody);
         }
         
-        return this.minBlock > block; //Пошли уже старые записи, дальше сканировать историю нет смысла
+        return false;
     }    
 }
 
+class Savepoint extends Scanner {
+    constructor() {
+        super();
+        this.json = null;
+        this.block = 0;
+    }
+
+    process(historyEntry) {
+        let block = historyEntry[1].block;
+        let id = historyEntry[0];
+        let op = historyEntry[1].op[0];
+        let opBody = historyEntry[1].op[1];
+        
+        if(op == "custom_json") {        
+            if(block > this.block && opBody.id == global.SAVEPOINT) {
+                this.json = opBody.json;
+                this.block = block;
+            }            
+        }
+        return this.block > 0;
+    }
+}
+
+module.exports.Savepoint = Savepoint;
+
 class Balances extends Scanner {
-    constructor(dobrobot, minBlock) {
+    constructor(dobrobot, minBlock, balances) {
         super(null);
-        this.balances = {};
+        this.balances = balances;
         this.minBlock = minBlock;
         this.dobrobot = dobrobot;
         this.transfer_to_vesting = [];
+
+        this.lastBlock = this.minBlock;
+        this.updated = false;
     }
     
     plus(userid, amount, currency, block, opt, fromUserId) {
@@ -60,6 +92,7 @@ class Balances extends Scanner {
         
         log.trace("\tadd " + userid + " " + amount + " " + currency);
         this.balances[userid].plus(amount, currency, block, opt, fromUserId);
+        this.updated = true;
     }
     
     minus(userid, amount, currency, block) {
@@ -68,12 +101,16 @@ class Balances extends Scanner {
     
     process(historyEntry) {
         let block = historyEntry[1].block;
-
+        //log.debug("block " + block + ", minBlock " + this.minBlock);
         if(block <= this.minBlock) {
             //Неучитывать данные после релиза
             return true;
         }
-                    
+        
+        if(block > this.lastBlock) {
+            this.lastBlock = block;
+        }
+
         let id = historyEntry[0];
         let op = historyEntry[1].op[0];
         let opBody = historyEntry[1].op[1];
@@ -98,7 +135,7 @@ class Balances extends Scanner {
                     }
                 }
 
-                log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
+                log.debug("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
 
                 log.trace("csv\t" + userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
                 this.minus(userid, amount, currency, block);
@@ -117,7 +154,7 @@ class Balances extends Scanner {
                     userid = m[1];
                     opt = null;
                 }
-                log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
+                log.debug("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
 
                 log.trace("csv\t" + userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
                 this.plus(userid, amount, currency, block, opt, opBody.from);
@@ -133,11 +170,7 @@ class Balances extends Scanner {
     }    
 }
 
+
 module.exports.Scanner = Scanner;
 module.exports.Votes = Votes;
 module.exports.Balances = Balances;
-
-if(!(typeof window == "undefined")) {
-    window.Balances = Balances;
-    window.OPTIONS = OptStack.OPTIONS;
-}

@@ -6,6 +6,8 @@ module.exports.runtime = {
     dl : 0
 }
 
+module.exports.SAVEPOINT = "balance";
+
 if(typeof window == "undefined") {
 
     var fs = require("fs");
@@ -30,6 +32,7 @@ if(typeof window == "undefined") {
         dobrobot : "testuser",
         dobrobotActiveKey : "5df47f4f4f",
         minBlock : 0,
+        chain_id : "782a3039b478c839e4cb0c941ff4eaeb7df40bdd68bd441afd444b9da763de12",
         ignorelistAuthors : ["golos.loto", "lotobot", "habreplicator"],
         blacklistSponsors : ["znation", "anyone"]
     };

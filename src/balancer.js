@@ -23,24 +23,40 @@ class CurrencyValue {
        this.amount = 0.0;
        this.opt = new OpStack();
        this.income = false;
-       this.incomeBlock = 0;
+       this.block = 0;
        this.incomeUserId = null;
+       this.deb = 0;
+    }
+
+    toJson() {
+        return {
+            a : this.amount,
+        }
+    }
+
+    fromJson(json, userid) {
+        if(this.amount != json.a) {
+            log.warn(userid + " " + (json.a - this.amount));
+        }
+        this.amount = json.a;
     }
 
     plus(amount, block, fromUserId) {
+        this.deb = 0;
         this.amount += amount;
         this.amount = parseFloat(this.amount.toFixed(3));
         
         //Определяем, было ли пополнение баланса, 
         // что бы потом проинформировать пользователя 
-        if(block > this.incomeBlock) {
+        if(block > this.block) {
             if(amount >= global.MIN_AMOUNT) {
                 this.income = true;
                 this.incomeUserId = fromUserId;
             } else {
+                //Было снятие с баланса!
                 this.income = false;
             }
-            this.incomeBlock = block;
+            this.block = block;
         }
     }
     
@@ -48,6 +64,10 @@ class CurrencyValue {
         this.plus(-1 * amount);
     }
     
+    debit(amount) {
+        this.deb += amount;
+    }
+
     isAvailable(weight) {
         if(this.opt.isActive()) {
             let amount = this.calcTransferAmount(weight);
@@ -65,19 +85,19 @@ class CurrencyValue {
         }
         
         let ta = this.opt.getAmountPerVote(weight);
-        
+        let current_amount = this.amount - this.deb;
         if(ta > 0) {
-            if(this.amount > global.MIN_AMOUNT) {
-                if(this.amount <= ta) {
-                    amount.amount = this.amount - global.MIN_AMOUNT;
+            if(current_amount > global.MIN_AMOUNT) {
+                if(current_amount <= ta) {
+                    amount.amount = current_amount - global.MIN_AMOUNT;
                     amount.zero = true;
                     log.debug("amount less then opt");
                 } else {
                     log.debug("amount enough");
                     amount.amount = ta;
                 }
-            } else if(this.amount == global.MIN_AMOUNT) {
-                log.debug("amount enough to inform about zero " + this.amount);
+            } else if(current_amount == global.MIN_AMOUNT) {
+                log.debug("amount enough to inform about zero " + current_amount);
                 amount.amount = 0;
                 amount.zero = true;
             } else {
@@ -96,8 +116,11 @@ class CurrencyValue {
 
 class Balance {
     
-    constructor() {
+    constructor(minBlock) {
         this.minBlock = 0;
+        if(minBlock) {
+            this.minBlock = minBlock;
+        }
         this.GBG = new CurrencyValue(CURRENCY.GBG);
         this.GOLOS = new CurrencyValue(CURRENCY.GOLOS);
     }
@@ -122,6 +145,19 @@ class Balance {
         return golos || gbg;
     }
     
+    /** сериализация в json */
+    toJson() {
+        return {
+            GOLOS : this.GOLOS.toJson(),
+            GBG : this.GBG.toJson()
+        }
+    }
+
+    fromJson(json, userid) {
+        this.GOLOS.fromJson(json.GOLOS, userid);
+        this.GBG.fromJson(json.GBG, userid);
+    }
+
     toString() {
         return  `GBG = { amount : ${this.GBG.amount}, opts : ${this.GBG.opt.toString()}}, GOLOS = { amount : ${this.GOLOS.amount}, opts : ${this.GOLOS.opt.toString()}`;
     }
@@ -144,15 +180,6 @@ class Balance {
         
         let amount = currency.calcTransferAmount(weight);
         
-        if(amount.amount > 0) {
-            currency.reduce(amount.amount);
-        }
-        
-        if(amount.zero) {
-            currency.reduce(global.MIN_AMOUNT);
-        }
-        
-        log.debug("reduced user balance " + this.toString());
         log.trace("calculated amount = " + JSON.stringify(amount));
         return amount;
     }    
@@ -188,6 +215,24 @@ async function test() {
         a = balance.getAmount(100);
         log.debug("a(100) = " + JSON.stringify(a)); 
     }
+
+    balance.plus(10.6, "GBG", 1, "1");
+    balance.plus(43.7, "GOLOS", 1, "1");
+
+    log.debug("balance = " + JSON.stringify(balance, null, 4));
+    
+
+    let json = balance.toJson();
+    log.debug("json = " + JSON.stringify(json, null, 4));
+
+    balance = new Balance();
+    let jsone = balance.toJson();
+    log.debug("json empty = " + JSON.stringify(jsone, null, 4));
+    
+    //десериализация
+    balance.fromJson(json);
+    log.debug("balance = " + JSON.stringify(balance, null, 4));
+
 }
 
 //test();

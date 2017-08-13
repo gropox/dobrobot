@@ -3,6 +3,15 @@ var log = require("./logger").getLogger(__filename);
 var golos = require("./golos");
 var Scanner = require("./scanner");
 var Balancer = require("./balancer");
+const memwatch = require('memwatch-next');
+
+memwatch.on('leak', (info) => {
+  log.error('Memory leak detected:\n', info);
+});
+
+
+let USER_BALANCES = {};
+let MINBLOCK = 0;
 
 async function processVote(userid, userRep, balance, vote) {
     if(vote.weight <= 0) {
@@ -42,18 +51,22 @@ async function processVote(userid, userRep, balance, vote) {
             let amk = amount.amount - reduce;
             amount.amount = reduce;
             await golos.transferKarma(vote.author, amk);
+            balance.GOLOS.debit(amk);
             text = `${userid} поднял вам карму за ваш пост/комментарий ${vote.permlink}`;
         }
         await golos.transfer(vote.author, amount.amount, amount.currency, text);
+        balance[amount.currency].debit(amount.amount);
+        
     }
     if(amount.zero) {
         await golos.transfer(userid, global.MIN_AMOUNT, amount.currency, `${userid} добро на вашем балансе иссякло`);
+        balance[amount.currency].debit(global.MIN_AMOUNT);
     }
 }
 
 async function transferHonor(userid, balance) {
 
-    let voteScanner = new Scanner.Votes(userid, balance.minBlock);    
+    let voteScanner = new Scanner.Votes(userid, Math.max(MINBLOCK, balance.minBlock));    
     await golos.scanUserHistory(userid, voteScanner);
     let votes = voteScanner.votes;
     
@@ -84,15 +97,29 @@ async function honor(userid, balance) {
     }
 }
 
-async function getBalances() {
-    let balancesScanner = new Scanner.Balances(global.settings.dobrobot, global.settings.minBlock);
-    await golos.scanHistory(balancesScanner);
+function dump(balances) {
+    let users = Object.keys(balances).sort();
     
+    for(let userid of users) {
+        log.info("balance " + String(userid + "               ").substring(0,15) + " : " + balances[userid].toString());
+    }
+}
+
+async function getBalances() {
+    log.debug("update balance since " + MINBLOCK);
+    let balancesScanner = new Scanner.Balances(global.settings.dobrobot, MINBLOCK, USER_BALANCES);
+
+    await golos.scanHistory(balancesScanner);
+
     for(tv of balancesScanner.transfer_to_vesting) {
         log.warn("unused transfer to vesting " + JSON.stringify(tv));
     }
-    
-    return balancesScanner.balances;
+
+    return balancesScanner;
+}
+
+async function createCheckpoint() {
+    await golos.createSavepoint(USER_BALANCES);
 }
 
 /**
@@ -106,12 +133,14 @@ async function refundBlacklisted(userid, bal) {
             to = bal.GOLOS.incomeUserId;
         }
         await golos.transfer(to, bal.GOLOS.amount, bal.GOLOS.name, userid + " в черном списке");
+        bal.GOLOS.debit(bal.GOLOS.amount);
     }
     if(bal.GBG.amount >= global.MIN_AMOUNT) {
         if(bal.GBG.incomeUserId) {
             to = bal.GBG.incomeUserId;
         }
         await golos.transfer(to, bal.GBG.amount, bal.GBG.name, userid + " в черном списке");
+        bal.GBG.debit(bal.GBG.amount);
     }
 }
 
@@ -125,14 +154,16 @@ async function refundUnknown(userid, bal) {
     if(bal.GOLOS.amount >= global.MIN_AMOUNT) {
         if(bal.GOLOS.incomeUserId) {
             to = bal.GOLOS.incomeUserId;
-            await golos.transfer(to, bal.GOLOS.amount, bal.GOLOS.name, userid + " - несуществующий аккаунт");
+            bal.GOLOS.debit(bal.GOLOS.amount);
         }
+        await golos.transfer(to, bal.GOLOS.amount, bal.GOLOS.name, userid + " - несуществующий аккаунт");
     }
     if(bal.GBG.amount >= global.MIN_AMOUNT) {
         if(bal.GBG.incomeUserId) {
             to = bal.GBG.incomeUserId;
         }
         await golos.transfer(to, bal.GBG.amount, bal.GBG.name, userid + " - несуществующий аккаунт");
+        bal.GBG.debit(bal.GBG.amount);
     }
 }
 
@@ -141,11 +172,14 @@ async function notifyIncome(userid, currency) {
         let sum = currency.amount - global.MIN_AMOUNT;
         await golos.transfer(userid, global.MIN_AMOUNT, currency.name, 
             `${userid} Ваш баланс добра был пополнен, сумма = ${sum.toFixed(3)} ${currency.name}, опции = ${currency.opt.toString()}`);
+        currency.debit(global.MIN_AMOUNT);
     }
 }
 
 module.exports.run = async function() {
     
+    MINBLOCK = global.settings.minBlock;
+
     let lastBlock = 0;
     while(true) {
         try {
@@ -161,46 +195,52 @@ module.exports.run = async function() {
             
             log.info(`
 #################
-Scan for balances, current block ${props.block}
+${new Date().toISOString()} Scan for balances, current block ${props.block}
 #################
 `);
-            let balances = await getBalances();
             
-            let users = Object.keys(balances);
-            
-            for(let userid of users) {
-                log.info("balance " + String(userid + "               ").substring(0,15) + " : " + balances[userid].toString());
+            scanner = await getBalances();
+            if(scanner.updated) {
+                await createCheckpoint();
             }
+
+            log.debug("MINBLOCK = " + MINBLOCK + ", lastBlock = " + scanner.lastBlock);
+
+            dump(USER_BALANCES);
             
-            for(let userid of users) {
+            let transferred = false;
+
+            for(let userid of Object.keys(USER_BALANCES)) {
                 log.debug("process " + userid);
                 
-                if(balances[userid].GBG.amount > global.MIN_AMOUNT 
-                    || balances[userid].GOLOS.amount > global.MIN_AMOUNT) {
+                if(USER_BALANCES[userid].GBG.amount > global.MIN_AMOUNT 
+                    || USER_BALANCES[userid].GOLOS.amount > global.MIN_AMOUNT) {
                     log.debug("check userid " + userid);
                     let known = await golos.checkUser(userid);
                     log.debug("userid " + known);
                     if(!known) {
-                        refundUnknown(userid, balances[userid]);
+                        refundUnknown(userid, USER_BALANCES[userid]);
                         continue;
                     }
                 }
                 
                 if(global.settings.blacklistSponsors.includes(userid)) {
-                    await refundBlacklisted(userid,  balances[userid]);
+                    await refundBlacklisted(userid,  USER_BALANCES[userid]);
                     continue;
                 }
-                await notifyIncome(userid, balances[userid].GBG);
-                await notifyIncome(userid, balances[userid].GOLOS);
-                await honor(userid, balances[userid]);
+                await notifyIncome(userid, USER_BALANCES[userid].GBG);
+                await notifyIncome(userid, USER_BALANCES[userid].GOLOS);
+
+                await honor(userid, USER_BALANCES[userid]);
             }
-            
+            MINBLOCK = scanner.lastBlock; //последний отсканированый блок
+
         } catch(e) {
             log.error("Error catched in main loop!");
             log.error(golos.getExceptionCause(e));
         }  
 
-        await sleep(1000*80); //sleep 80 seconds
+        await sleep(1000*60*2); //дать время пользователям поработать
     }
     log.err("broken loop");
     process.exit(1);

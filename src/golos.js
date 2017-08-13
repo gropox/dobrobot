@@ -5,7 +5,7 @@ var Scanner = require("./scanner");
 
 steem.config.set('websocket',global.settings.golos_websocket);
 steem.config.set('address_prefix',"GLS");
-steem.config.set('chain_id','782a3039b478c839e4cb0c941ff4eaeb7df40bdd68bd441afd444b9da763de12');
+steem.config.set('chain_id',global.settings.chain_id);
 
 log.debug(steem.config.get('websocket'));
 
@@ -118,6 +118,9 @@ module.exports.transferKarma = async function(receiver, amount) {
     }
 }
 
+
+
+
 module.exports.getExceptionCause = function(e) {
     if(e.cause && e.cause.payload && e.cause.payload.error) {
         let m = e.cause.payload.error.message; 
@@ -190,3 +193,25 @@ async function getUserGests(userid) {
 }
 
 module.exports.getUserGests = getUserGests;
+
+async function createSavepoint(balances) {
+
+        let dobrobotBalances = {};
+
+        for(let userid of Object.keys(balances)) {
+            if(balances[userid].GBG.amount > 0 || balances[userid].GOLOS.amount > 0) {
+                dobrobotBalances[userid] = balances[userid].toJson();
+            }
+        }
+
+        if(Object.keys(dobrobotBalances).length == 0 ) {
+            return;
+        }
+
+        let json = JSON.stringify(dobrobotBalances);
+        log.debug(json);
+        await steem.broadcast.customJsonAsync(ACTIVE_KEY, [USERID], [], 
+            global.SAVEPOINT, json);
+}
+
+module.exports.createSavepoint = createSavepoint;
