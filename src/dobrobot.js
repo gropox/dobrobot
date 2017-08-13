@@ -7,6 +7,25 @@ var Balancer = require("./balancer");
 let USER_BALANCES = {};
 let MINBLOCK = 0;
 
+let transfers_to_karma = [];
+
+function transferKarma(userid, amount) {
+    for(let t of transfers_to_karma) {
+        if(t.userid == userid) {
+            t.amount += amount;
+            return;
+        }
+    }
+    transfers_to_karma.push({userid : userid, amount : amount});
+}
+
+async function doTransferKarama() {
+    for(let t of transfers_to_karma) {
+        await golos.transferKarma(t.userid, t.amount);
+    }
+    transfers_to_karma = [];
+}
+
 async function processVote(userid, userRep, balance, vote) {
     if(vote.weight <= 0) {
         log.debug("flag found " + vote.author + "/" + vote.permlink);
@@ -44,7 +63,7 @@ async function processVote(userid, userRep, balance, vote) {
             }
             let amk = amount.amount - reduce;
             amount.amount = reduce;
-            await golos.transferKarma(vote.author, amk);
+            transferKarma(vote.author, amk);
             balance.GOLOS.debit(amk);
             text = `${userid} поднял вам карму за ваш пост/комментарий ${vote.permlink}`;
         }
@@ -227,6 +246,7 @@ ${new Date().toISOString()} Scan for balances, current block ${props.block}
 
                 await honor(userid, USER_BALANCES[userid]);
             }
+            await doTransferKarama();
             MINBLOCK = scanner.lastBlock; //последний отсканированый блок
 
         } catch(e) {

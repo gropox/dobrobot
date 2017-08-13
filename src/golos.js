@@ -103,10 +103,10 @@ module.exports.transfer = async function(receiver, amount, currency, memo) {
 }
 
 module.exports.transferKarma = async function(receiver, amount) {
-    log.info("transfer karama " + receiver + ", " + amount );
+    log.info("transfer karma " + receiver + ", " + amount );
 
     if(global.settings.broadcast) {
-        log.info("\tbroadcasting transfer karama");    
+        log.info("\tbroadcasting transfer karma");    
         await steem.broadcast.transferToVestingAsync(ACTIVE_KEY, USERID, 
             receiver, amount.toFixed(3) + " GOLOS");
         
