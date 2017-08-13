@@ -21,7 +21,9 @@ function transferKarma(userid, amount) {
 
 async function doTransferKarama() {
     for(let t of transfers_to_karma) {
-        await golos.transferKarma(t.userid, t.amount);
+        if(t.amount >= global.MIN_AMOUNT) {
+            await golos.transferKarma(t.userid, t.amount);
+        }
     }
     transfers_to_karma = [];
 }
