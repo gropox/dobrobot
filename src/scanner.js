@@ -23,6 +23,16 @@ class Votes extends Scanner {
         log.debug("Search for votes of " + this.userid + " since " + this.minBlock);
     }
     
+    add(vote) {
+        for(let v of this.votes) {
+            if(vote.author == v.author && vote.permlink == v.permlink) {
+               log.debug("duplicate vote " + vote.author + "/" + vote.permlink) ;
+               return;
+            }
+        }
+        this.votes.push(vote);
+    }
+
     process(historyEntry) {
         //Последяя выплата
         let block =  historyEntry[1].block;
@@ -40,7 +50,7 @@ class Votes extends Scanner {
             && opBody.author != this.userid
             && opBody.weight > 0) {
             log.debug("\tfound upvote of " + this.userid + " (" + (opBody.weight / 100) + ") " + opBody.author + "/" + opBody.permlink);
-            this.votes.push(opBody);
+            this.add(opBody);
         }
         
         return false;
