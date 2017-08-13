@@ -1,13 +1,10 @@
 var log = require("./logger").getLogger(__filename, 12);
-var steem = require("steem");
+var steem = require("golos-js");
 var global = require("./global");
 var Scanner = require("./scanner");
 
 steem.config.set('websocket',global.settings.golos_websocket);
-steem.config.set('address_prefix',"GLS");
 steem.config.set('chain_id',global.settings.chain_id);
-
-log.debug(steem.config.get('websocket'));
 
 var lastRetrievedProps = 0;
 

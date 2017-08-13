@@ -1,5 +1,3 @@
-var dateFormat = require('dateformat');
-
 module.exports.MIN_AMOUNT = 0.001;
 
 module.exports.runtime = {
@@ -52,22 +50,6 @@ if(typeof window == "undefined") {
                 console.error("unable to create dummy config (" + CONFIG_FILE + ")");
             }
         }
-    }
-
-
-    module.exports.formatDateTime = function(ms) {
-        var options = {
-
-        year: 'numeric',
-        month: 'numeric',
-        day: 'numeric',
-        timezone: 'UTC',
-        hour: 'numeric',
-        minute: 'numeric',
-        second: 'numeric'
-        };
-        
-        return dateFormat(new Date(ms), "dd.mm.yyyy h:MM:ss");
     }
 
     module.exports.isBlacklisted = function(userid) {

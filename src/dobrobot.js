@@ -3,12 +3,6 @@ var log = require("./logger").getLogger(__filename);
 var golos = require("./golos");
 var Scanner = require("./scanner");
 var Balancer = require("./balancer");
-const memwatch = require('memwatch-next');
-
-memwatch.on('leak', (info) => {
-  log.error('Memory leak detected:\n', info);
-});
-
 
 let USER_BALANCES = {};
 let MINBLOCK = 0;
@@ -204,7 +198,7 @@ ${new Date().toISOString()} Scan for balances, current block ${props.block}
                 await createCheckpoint();
             }
 
-            log.debug("MINBLOCK = " + MINBLOCK + ", lastBlock = " + scanner.lastBlock);
+            log.info("MINBLOCK = " + MINBLOCK + ", LASTBLOCK = " + scanner.lastBlock);
 
             dump(USER_BALANCES);
             

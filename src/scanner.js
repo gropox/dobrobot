@@ -39,7 +39,7 @@ class Votes extends Scanner {
             && opBody.voter == this.userid 
             && opBody.author != this.userid
             && opBody.weight > 0) {
-            log.info("\tfound upvote of " + this.userid + " (" + (opBody.weight / 100) + ") " + opBody.author + "/" + opBody.permlink);
+            log.debug("\tfound upvote of " + this.userid + " (" + (opBody.weight / 100) + ") " + opBody.author + "/" + opBody.permlink);
             this.votes.push(opBody);
         }
         
@@ -135,7 +135,7 @@ class Balances extends Scanner {
                     }
                 }
 
-                log.debug("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
+                log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
 
                 log.trace("csv\t" + userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
                 this.minus(userid, amount, currency, block);
@@ -154,7 +154,7 @@ class Balances extends Scanner {
                     userid = m[1];
                     opt = null;
                 }
-                log.debug("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
+                log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
 
                 log.trace("csv\t" + userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
                 this.plus(userid, amount, currency, block, opt, opBody.from);
