@@ -1,32 +1,11 @@
 var global = require("./global");
 var log = require("./logger").getLogger(__filename);
 var golos = require("./golos");
+var golosjs = require("golos-js");
 var Scanner = require("./scanner");
-var Balancer = require("./balancer");
+var balancer = require("./balancer");
 
-let USER_BALANCES = {};
 let MINBLOCK = 0;
-
-let transfers_to_karma = [];
-
-function transferKarma(userid, amount) {
-    for(let t of transfers_to_karma) {
-        if(t.userid == userid) {
-            t.amount += amount;
-            return;
-        }
-    }
-    transfers_to_karma.push({userid : userid, amount : amount});
-}
-
-async function doTransferKarama() {
-    for(let t of transfers_to_karma) {
-        if(t.amount >= global.MIN_AMOUNT) {
-            await golos.transferKarma(t.userid, t.amount);
-        }
-    }
-    transfers_to_karma = [];
-}
 
 async function processVote(userid, userRep, balance, vote) {
     if(vote.weight <= 0) {
@@ -54,10 +33,10 @@ async function processVote(userid, userRep, balance, vote) {
         
         log.debug("sanchita = " + amount.opt.isSanchita());
         log.debug("prarabdha = " + amount.opt.isPrarabdha());
-        log.debug("GOLOS = " + (amount.currency == Balancer.CURRENCY.GOLOS));
+        log.debug("GOLOS = " + (amount.currency == balancer.CURRENCY.GOLOS));
         
         if(amount.amount > global.MIN_AMOUNT && 
-                amount.currency == Balancer.CURRENCY.GOLOS && 
+                amount.currency == balancer.CURRENCY.GOLOS && 
                 (amount.opt.isSanchita() || amount.opt.isPrarabdha())) {
             let reduce = global.MIN_AMOUNT;
             if(amount.opt.isPrarabdha()) {
@@ -65,72 +44,19 @@ async function processVote(userid, userRep, balance, vote) {
             }
             let amk = amount.amount - reduce;
             amount.amount = reduce;
-            transferKarma(vote.author, amk);
-            balance.GOLOS.debit(amk);
+            await golos.transferKarma(vote.author, amk);
+            balance.GOLOS.reduce(amk);
+            await sleep(1000 * 6); //let transfer mature
             text = `${userid} поднял вам карму за ваш пост/комментарий ${vote.permlink}`;
         }
         await golos.transfer(vote.author, amount.amount, amount.currency, text);
-        balance[amount.currency].debit(amount.amount);
+        balance[amount.currency].reduce(amount.amount);
         
     }
     if(amount.zero) {
         await golos.transfer(userid, global.MIN_AMOUNT, amount.currency, `${userid} добро на вашем балансе иссякло`);
-        balance[amount.currency].debit(global.MIN_AMOUNT);
+        balance[amount.currency].reduce(global.MIN_AMOUNT);
     }
-}
-
-async function transferHonor(userid, balance) {
-
-    let voteScanner = new Scanner.Votes(userid, Math.max(MINBLOCK, balance.minBlock));    
-    await golos.scanUserHistory(userid, voteScanner);
-    let votes = voteScanner.votes;
-    
-    if(votes.length > 0) {
-        
-        votes.sort((a,b) => {
-            return a.block - b.block;
-        });
-
-        let userRep = await golos.getReputation(userid);
-        //максимально 40 апвотов, что бы не перегружать
-        for(let i = 0; i < votes.length && i < 40; i++) {    
-            await processVote(userid, userRep, balance, votes[i]);
-        }
-    
-   }
-}
-
-async function honor(userid, balance) {
-    
-    //прежде чем искать голоса в истории, проверить, достаточно ли средств, хотя бы по минимому
-    let doHonor = balance.isAvailable();
-    
-    if(doHonor) {
-        await transferHonor(userid, balance)
-    } else {
-        log.debug(userid + " has zero balance");
-    }
-}
-
-function dump(balances) {
-    let users = Object.keys(balances).sort();
-    
-    for(let userid of users) {
-        log.info("balance " + String(userid + "               ").substring(0,15) + " : " + balances[userid].toString());
-    }
-}
-
-async function getBalances() {
-    log.debug("update balance since " + MINBLOCK);
-    let balancesScanner = new Scanner.Balances(global.settings.dobrobot, MINBLOCK, USER_BALANCES);
-
-    await golos.scanHistory(balancesScanner);
-
-    for(tv of balancesScanner.transfer_to_vesting) {
-        log.warn("unused transfer to vesting " + JSON.stringify(tv));
-    }
-
-    return balancesScanner;
 }
 
 async function createCheckpoint() {
@@ -140,22 +66,22 @@ async function createCheckpoint() {
 /**
  * перевод денег пользователям из черного списка. 
  */
-async function refundBlacklisted(userid, bal) {
+async function refundBlacklisted(userid, balance) {
     log.info("\tsponsor blacklisted, refund");
     let to = userid;
-    if(bal.GOLOS.amount >= global.MIN_AMOUNT) {
-        if(bal.GOLOS.incomeUserId) {
-            to = bal.GOLOS.incomeUserId;
+    if(balance.GOLOS.amount >= global.MIN_AMOUNT) {
+        if(balance.GOLOS.incomeUserId) {
+            to = balance.GOLOS.incomeUserId;
         }
-        await golos.transfer(to, bal.GOLOS.amount, bal.GOLOS.name, userid + " в черном списке");
-        bal.GOLOS.debit(bal.GOLOS.amount);
+        await golos.transfer(to, balance.GOLOS.amount, balance.GOLOS.name, userid + " в черном списке");
+        balance.GOLOS.reduce(bal.GOLOS.amount);
     }
-    if(bal.GBG.amount >= global.MIN_AMOUNT) {
-        if(bal.GBG.incomeUserId) {
-            to = bal.GBG.incomeUserId;
+    if(balance.GBG.amount >= global.MIN_AMOUNT) {
+        if(balance.GBG.incomeUserId) {
+            to = balance.GBG.incomeUserId;
         }
-        await golos.transfer(to, bal.GBG.amount, bal.GBG.name, userid + " в черном списке");
-        bal.GBG.debit(bal.GBG.amount);
+        await golos.transfer(to, balance.GBG.amount, balance.GBG.name, userid + " в черном списке");
+        balance.GBG.reduce(balance.GBG.amount);
     }
 }
 
@@ -169,16 +95,16 @@ async function refundUnknown(userid, bal) {
     if(bal.GOLOS.amount >= global.MIN_AMOUNT) {
         if(bal.GOLOS.incomeUserId) {
             to = bal.GOLOS.incomeUserId;
-            bal.GOLOS.debit(bal.GOLOS.amount);
+            await golos.transfer(to, bal.GOLOS.amount, bal.GOLOS.name, userid + " - несуществующий аккаунт");
+            bal.GOLOS.reduce(bal.GOLOS.amount);
         }
-        await golos.transfer(to, bal.GOLOS.amount, bal.GOLOS.name, userid + " - несуществующий аккаунт");
     }
     if(bal.GBG.amount >= global.MIN_AMOUNT) {
         if(bal.GBG.incomeUserId) {
             to = bal.GBG.incomeUserId;
+            await golos.transfer(to, bal.GBG.amount, bal.GBG.name, userid + " - несуществующий аккаунт");
+            bal.GBG.reduce(bal.GBG.amount);
         }
-        await golos.transfer(to, bal.GBG.amount, bal.GBG.name, userid + " - несуществующий аккаунт");
-        bal.GBG.debit(bal.GBG.amount);
     }
 }
 
@@ -187,78 +113,111 @@ async function notifyIncome(userid, currency) {
         let sum = currency.amount - global.MIN_AMOUNT;
         await golos.transfer(userid, global.MIN_AMOUNT, currency.name, 
             `${userid} Ваш баланс добра был пополнен, сумма = ${sum.toFixed(3)} ${currency.name}, опции = ${currency.opt.toString()}`);
-        currency.debit(global.MIN_AMOUNT);
+        currency.reduce(global.MIN_AMOUNT);
+    }
+}
+
+async function readBalances() {
+    let balancesScanner = new Scanner.Balances(global.settings.dobrobot, global.settings.minBlock);
+
+    await golos.scanHistory(balancesScanner);
+
+    for(tv of balancesScanner.transfer_to_vesting) {
+        log.warn("unused transfer to vesting " + JSON.stringify(tv));
+    }
+
+    balancer.dump();
+}
+
+async function processOpVote(vote) {
+    let balance = balancer.getUserBalance(vote.voter);
+    if(!balance) {
+        log.trace(vote.voter + " has no balance!");
+        return;
+    }
+
+    if(!balance.isAvailable()) {
+        log.trace(vote.voter + " has not enough on balance!");
+        return;
+    }
+
+    log.debug("process vote of "+ vote.voter + " for " + vote.author + "/" + vote.permlink );
+    
+    let userRep = await golos.getReputation(vote.author);
+    await processVote(vote.voter, userRep, balance, vote);
+    log.debug(vote.voter + " balance " + balance.toString());
+}
+
+async function processOpTransfer(transfer, block) {
+    let income = Scanner.processIncoming(transfer, block);
+    let balance = balancer.getUserBalance(income.userid)
+    if(!await golos.getAccount(income.userid)) {
+        await refundUnknown(income.userid, balance);
+    }
+    await notifyIncome(income.userid, balance[income.currency]);
+    log.debug(income.userid + " balance " + balance.toString());
+}
+
+async function processBlock(bn) {
+    log.info("processing block " + bn);
+    let transactions = await golosjs.api.getOpsInBlockAsync(bn, false);
+    //log.debug(JSON.stringify(transactions));
+    for(let tr of transactions) {
+        let op = tr.op[0];
+        let opBody = tr.op[1];
+        switch(op) {
+            case "vote":
+                if(opBody.weight > 0 && opBody.voter != opBody.author) {
+                    log.trace("tr " + JSON.stringify(tr));
+                    await processOpVote(opBody);
+                }
+                break;
+            case "transfer":
+                if(opBody.to == global.settings.dobrobot) {
+                    log.trace("tr " + JSON.stringify(tr));
+                    await processOpTransfer(opBody, bn)
+                }   
+                break;
+        }
+    }              
+}
+
+async function cleanupBalance(users) {
+    users.sort();
+    for(let userid of users) {
+        let balance = balancer.getUserBalance(userid)
+        if(balance.isAvailable() && !await golos.getAccount(userid)) {
+            await refundUnknown(userid, balance);
+        }
     }
 }
 
 module.exports.run = async function() {
     
-    MINBLOCK = global.settings.minBlock;
+    let props = await golos.getCurrentServerTimeAndBlock();
+    let currentBlock = props.block;
 
-    let lastBlock = 0;
+    await readBalances();
+    await cleanupBalance(balancer.getUsers());
+
     while(true) {
         try {
 
-            let props = await golos.getCurrentServerTimeAndBlock();
-            
-            if(props.block <= lastBlock) {
-                log.info(`no changes, skip round`);
-                await sleep(1000*15);
+            props = await golos.getCurrentServerTimeAndBlock();
+
+            if(props.block < currentBlock) {
+                //log.info(`no new blocks, skip round`);
+                await sleep(1000*6);
                 continue;
             }
-            lastBlock = props.block;
-            
-            log.info(`
-#################
-${new Date().toISOString()} Scan for balances, current block ${props.block}
-#################
-`);
-            
-            scanner = await getBalances();
-            if(scanner.updated) {
-                await createCheckpoint();
-            }
 
-            log.info("MINBLOCK = " + MINBLOCK + ", LASTBLOCK = " + scanner.lastBlock);
-
-            dump(USER_BALANCES);
-            
-            let transferred = false;
-
-            for(let userid of Object.keys(USER_BALANCES)) {
-                log.debug("process " + userid);
-                
-                if(USER_BALANCES[userid].GBG.amount > global.MIN_AMOUNT 
-                    || USER_BALANCES[userid].GOLOS.amount > global.MIN_AMOUNT) {
-                    log.debug("check userid " + userid);
-                    let known = await golos.checkUser(userid);
-                    log.debug("userid " + known);
-                    if(!known) {
-                        refundUnknown(userid, USER_BALANCES[userid]);
-                        continue;
-                    }
-                }
-                
-                if(global.settings.blacklistSponsors.includes(userid)) {
-                    await refundBlacklisted(userid,  USER_BALANCES[userid]);
-                    continue;
-                }
-                await notifyIncome(userid, USER_BALANCES[userid].GBG);
-                await notifyIncome(userid, USER_BALANCES[userid].GOLOS);
-
-                await honor(userid, USER_BALANCES[userid]);
-            }
-            await doTransferKarama();
-            MINBLOCK = scanner.lastBlock; //последний отсканированый блок
+            await processBlock(currentBlock++);
 
         } catch(e) {
             log.error("Error catched in main loop!");
             log.error(golos.getExceptionCause(e));
         }  
-
-        await sleep(1000*60*2); //дать время пользователям поработать
-    }
-    log.err("broken loop");
+    } 
     process.exit(1);
 }
 

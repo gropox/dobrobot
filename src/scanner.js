@@ -1,5 +1,5 @@
 const log = require("./logger").getLogger(__filename, 12);
-const Balance = require("./balancer");
+const balancer = require("./balancer");
 const options = require("./options");
 const global = require("./global");
 
@@ -83,32 +83,13 @@ class Savepoint extends Scanner {
 module.exports.Savepoint = Savepoint;
 
 class Balances extends Scanner {
-    constructor(dobrobot, minBlock, balances) {
+    constructor(dobrobot, minBlock) {
         super(null);
-        this.balances = balances;
         this.minBlock = minBlock;
         this.dobrobot = dobrobot;
         this.transfer_to_vesting = [];
+    }
 
-        this.lastBlock = this.minBlock;
-        this.updated = false;
-    }
-    
-    plus(userid, amount, currency, block, opt, fromUserId) {
-        if(this.balances[userid]) {
-        } else {
-            this.balances[userid] = new Balance();
-        }
-        
-        log.trace("\tadd " + userid + " " + amount + " " + currency);
-        this.balances[userid].plus(amount, currency, block, opt, fromUserId);
-        this.updated = true;
-    }
-    
-    minus(userid, amount, currency, block) {
-        this.plus(userid, -1 * amount, currency, block, null, null);
-    }
-    
     process(historyEntry) {
         let block = historyEntry[1].block;
         //log.debug("block " + block + ", minBlock " + this.minBlock);
@@ -148,26 +129,13 @@ class Balances extends Scanner {
                 log.trace("\tfound payout to " + userid + ", amount = " + amount.toFixed(3) + " " + currency );
 
                 log.trace("csv\t" + userid + "\t" + "-" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
-                this.minus(userid, amount, currency, block);
+                balancer.minus(userid, amount, currency, block);
 
             }
             
             // Входящий перевод - прибавляем к балансу
             if(opBody.to == this.dobrobot) {
-                let amount = parseFloat(opBody.amount.split(" ")[0]);
-                let currency = opBody.amount.split(" ")[1];
-                let opt = opBody.memo;
-                let userid = opBody.from;
-                let m = options.isUserTransfer(opt);
-                //log.debug(JSON.stringify(m));
-                if(m) {
-                    userid = m[1];
-                    opt = null;
-                }
-                log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
-
-                log.trace("csv\t" + userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
-                this.plus(userid, amount, currency, block, opt, opBody.from);
+                processIncoming(opBody, block);
             }
         }
         if(op == "transfer_to_vesting") {
@@ -184,3 +152,28 @@ class Balances extends Scanner {
 module.exports.Scanner = Scanner;
 module.exports.Votes = Votes;
 module.exports.Balances = Balances;
+
+function processIncoming(opBody, block) {
+    let amount = parseFloat(opBody.amount.split(" ")[0]);
+    let currency = opBody.amount.split(" ")[1];
+    let opt = opBody.memo;
+    let userid = opBody.from;
+    let m = options.isUserTransfer(opt);
+    //log.debug(JSON.stringify(m));
+    if(m) {
+        userid = m[1];
+        opt = null;
+    }
+    log.trace("\tfound payin from " + userid + ", amount = " + amount.toFixed(3) + " " + currency + "(" + opt + ")");
+
+    log.trace("csv\t" + userid + "\t" + "+" + amount.toFixed(3) + "\t" + currency + "\t" +  block);
+    balancer.plus(userid, amount, currency, block, opt, opBody.from);
+    return {
+        userid : userid,
+        currency : currency
+    };
+}
+
+module.exports.processIncoming = processIncoming;
+
+    

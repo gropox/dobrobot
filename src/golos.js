@@ -23,11 +23,11 @@ async function retrieveDynGlobProps() {
 async function getCurrentServerTimeAndBlock() {
     await retrieveDynGlobProps();
     if(props.time) { 
-        lastCommitedBlock = props.head_block_number;
-        log.info("lastCommitedBlock = " + lastCommitedBlock + ", headBlock = " + props.head_block_number);
+        lastCommitedBlock = props.last_irreversible_block_num;
+        log.trace("lastCommitedBlock = " + lastCommitedBlock + ", headBlock = " + props.head_block_number);
         return {
             time : Date.parse(props.time), 
-            block : props.head_block_number 
+            block : lastCommitedBlock 
         };
     }
     throw "Current time could not be retrieved";
@@ -60,6 +60,9 @@ async function scanUserHistory(userid, scanner) {
             let terminate = false;
             for(let h = 0; h < userHistory.length; h++) {
                 log.trace("check hist id " + userHistory[h][0] + " / " + userHistory[h][1].op[0]);
+                if(userHistory[h][1].block > lastCommitedBlock) {
+                    log.debug("skip uncommited block " + userHistory[h][1].block);
+                }
                 if(scanner.process(userHistory[h])) {
                     if(!terminate) {
                         terminate = true;
@@ -177,6 +180,8 @@ async function getAccount(userid) {
     return null;
 }
 
+module.exports.getAccount = getAccount;
+
 function convertVerstings(vesting) {
     let SPMV = 1000000.0 * parseFloat(props.total_vesting_fund_steem.split(" ")[0]) / parseFloat(props.total_vesting_shares.split(" ")[0]);
     return SPMV * vesting / 1000000;
@@ -206,9 +211,13 @@ async function createSavepoint(balances) {
         }
 
         let json = JSON.stringify(dobrobotBalances);
-        log.debug(json);
-        await steem.broadcast.customJsonAsync(ACTIVE_KEY, [USERID], [], 
-            global.SAVEPOINT, json);
+        //log.debug(json);
+        if(global.settings.broadcast) {
+            await steem.broadcast.customJsonAsync(ACTIVE_KEY, [USERID], [], 
+                global.SAVEPOINT, json);
+        } else {
+            log.debug("No broadcast " + JSON.stringify(dobrobotBalances, null, 4));
+        }
 }
 
 module.exports.createSavepoint = createSavepoint;

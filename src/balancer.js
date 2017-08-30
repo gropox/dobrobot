@@ -3,6 +3,8 @@ var steem = require("steem");
 var global = require("./global");
 var OpStack = require("./options");
 
+let USER_BALANCES = {};
+module.exports.USER_BALANCES = USER_BALANCES;
 const CURRENCY = {
     GOLOS : "GOLOS",
     GBG : "GBG"
@@ -25,7 +27,6 @@ class CurrencyValue {
        this.income = false;
        this.block = 0;
        this.incomeUserId = null;
-       this.deb = 0;
     }
 
     toJson() {
@@ -63,10 +64,6 @@ class CurrencyValue {
     reduce(amount) {
         this.plus(-1 * amount);
     }
-    
-    debit(amount) {
-        this.deb += amount;
-    }
 
     isAvailable(weight) {
         if(this.opt.isActive()) {
@@ -85,7 +82,7 @@ class CurrencyValue {
         }
         
         let ta = this.opt.getAmountPerVote(weight);
-        let current_amount = this.amount - this.deb;
+        let current_amount = this.amount;
         if(ta > 0) {
             if(current_amount > global.MIN_AMOUNT) {
                 if(current_amount <= ta) {
@@ -124,6 +121,11 @@ class Balance {
         this.GBG = new CurrencyValue(CURRENCY.GBG);
         this.GOLOS = new CurrencyValue(CURRENCY.GOLOS);
     }
+
+    commit() {
+        this.GBG.commit();
+        this.GOLOS.commit();
+    }
     
     plus(amount, currency, block, opt, fromUserId) {
         log.trace("\tadd " + amount + " " + currency);
@@ -159,7 +161,7 @@ class Balance {
     }
 
     toString() {
-        return  `GBG = { amount : ${this.GBG.amount}, opts : ${this.GBG.opt.toString()}}, GOLOS = { amount : ${this.GOLOS.amount}, opts : ${this.GOLOS.opt.toString()}`;
+        return  `GBG = { amount : ${this.GBG.amount}, opts : ${this.GBG.opt.toString()}}, GOLOS = { amount : ${this.GOLOS.amount}, ${this.GOLOS.opt.toString()} }`;
     }
     
     getAmount(weight) {
@@ -185,9 +187,42 @@ class Balance {
     }    
 }
 
-Balance.CURRENCY = CURRENCY;
+module.exports.CURRENCY = CURRENCY;
 
-module.exports = Balance;
+module.exports.Balance = Balance;
+
+function dump() {
+
+    let users = Object.keys(USER_BALANCES).sort();
+    
+    for(let userid of users) {
+        log.info("balance " + String(userid + "               ").substring(0,15) + " : " + USER_BALANCES[userid].toString());
+    }
+}
+
+module.exports.dump = dump;
+
+module.exports.plus = function(userid, amount, currency, block, opt, fromUserId) {
+    if(USER_BALANCES[userid]) {
+    } else {
+        USER_BALANCES[userid] = new Balance();
+    }
+    
+    log.trace("\tadd " + userid + " " + amount + " " + currency);
+    USER_BALANCES[userid].plus(amount, currency, block, opt, fromUserId);
+}
+
+module.exports.minus = function(userid, amount, currency, block) {
+    module.exports.plus(userid, -1 * amount, currency, block, null, null);
+}
+
+module.exports.getUserBalance = function(userid) {
+    return USER_BALANCES[userid];
+}
+
+module.exports.getUsers = function() {
+    return Object.keys(USER_BALANCES);
+}
 
 async function test() {
 
@@ -232,7 +267,6 @@ async function test() {
     //десериализация
     balance.fromJson(json);
     log.debug("balance = " + JSON.stringify(balance, null, 4));
-
 }
 
 //test();
