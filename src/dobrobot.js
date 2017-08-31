@@ -129,7 +129,7 @@ async function readBalances() {
     balancer.dump();
 }
 
-async function processOpVote(vote) {
+async function processOpVote(vote, block) {
     let balance = balancer.getUserBalance(vote.voter);
     if(!balance) {
         log.trace(vote.voter + " has no balance!");
@@ -140,26 +140,29 @@ async function processOpVote(vote) {
         log.trace(vote.voter + " has not enough on balance!");
         return;
     }
+    log.info(vote.voter + " balance before : " + balance.toString());
 
-    log.debug("process vote of "+ vote.voter + " for " + vote.author + "/" + vote.permlink );
+    log.info(block + ": " + "process vote of "+ vote.voter + " for " + vote.author + "/" + vote.permlink );
     
     let userRep = await golos.getReputation(vote.author);
     await processVote(vote.voter, userRep, balance, vote);
-    log.debug(vote.voter + " balance " + balance.toString());
+    log.info(vote.voter + " balance after  : " + balance.toString());
 }
 
 async function processOpTransfer(transfer, block) {
+    log.info(block + ": " + "process incoming transfer from  "+ transfer.from + " amount " + transfer.amount + " memo " + transfer.memo );
     let income = Scanner.processIncoming(transfer, block);
     let balance = balancer.getUserBalance(income.userid)
+    log.info(income.userid + " balance before : " + balance.toString());
     if(!await golos.getAccount(income.userid)) {
         await refundUnknown(income.userid, balance);
     }
     await notifyIncome(income.userid, balance[income.currency]);
-    log.debug(income.userid + " balance " + balance.toString());
+    log.info(income.userid + " balance after  : " + balance.toString());
 }
 
 async function processBlock(bn) {
-    log.info("processing block " + bn);
+    log.debug("processing block " + bn);
     let transactions = await golosjs.api.getOpsInBlockAsync(bn, false);
     //log.debug(JSON.stringify(transactions));
     for(let tr of transactions) {
@@ -169,7 +172,7 @@ async function processBlock(bn) {
             case "vote":
                 if(opBody.weight > 0 && opBody.voter != opBody.author) {
                     log.trace("tr " + JSON.stringify(tr));
-                    await processOpVote(opBody);
+                    await processOpVote(opBody, bn);
                 }
                 break;
             case "transfer":
