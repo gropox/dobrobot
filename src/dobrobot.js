@@ -157,7 +157,9 @@ async function processOpTransfer(transfer, block) {
     if(!await golos.getAccount(income.userid)) {
         await refundUnknown(income.userid, balance);
     }
-    await notifyIncome(income.userid, balance[income.currency]);
+    if(income.userid != global.settings.dobrobot) {
+        await notifyIncome(income.userid, balance[income.currency]);
+    }
     log.info(income.userid + " balance after  : " + balance.toString());
 }
 
@@ -170,7 +172,10 @@ async function processBlock(bn) {
         let opBody = tr.op[1];
         switch(op) {
             case "vote":
-                if(opBody.weight > 0 && opBody.voter != opBody.author) {
+                if(opBody.weight > 0 
+                    && opBody.voter != opBody.author
+                    && opBody.voter != global.settings.dobrobot
+                    && opBody.author != global.settings.dobrobot) {
                     log.trace("tr " + JSON.stringify(tr));
                     await processOpVote(opBody, bn);
                 }
