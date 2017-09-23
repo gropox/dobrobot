@@ -144,7 +144,7 @@ async function processOpVote(vote, block) {
 
     log.info(block + ": " + "process vote of "+ vote.voter + " for " + vote.author + "/" + vote.permlink );
     
-    let userRep = await golos.getReputation(vote.author);
+    let userRep = await golos.getReputation(vote.voter);
     await processVote(vote.voter, userRep, balance, vote);
     log.info(vote.voter + " balance after  : " + balance.toString());
 }

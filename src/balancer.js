@@ -161,7 +161,7 @@ class Balance {
     }
 
     toString() {
-        return  `GBG = { amount : ${this.GBG.amount}, opts : ${this.GBG.opt.toString()}}, GOLOS = { amount : ${this.GOLOS.amount}, ${this.GOLOS.opt.toString()} }`;
+        return  `${this.GBG.amount}\tGBG\t${this.GBG.opt.toString()}\t${this.GOLOS.amount}\tGOLOS\t${this.GOLOS.opt.toString()}`;
     }
     
     getAmount(weight) {

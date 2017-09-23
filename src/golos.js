@@ -137,7 +137,8 @@ module.exports.getExceptionCause = function(e) {
 }
 
 async function getGolosPrice() {
-    let book = await steem.api.getOrderBookAsync(1);
+    log.trace("query order book ");
+    let book = await steem.api.getOrderBookAsync(1, "GBG", "GOLOS");
     log.trace("order book " + JSON.stringify(book));
     if(book.asks.length > 0) {
         return parseFloat(book.asks[0].real_price);
@@ -189,6 +190,9 @@ function convertVerstings(vesting) {
 
 async function getUserGests(userid) {
     let user = await getAccount(userid);
+    if(!user) {
+        return "0.000";
+    }
     let ret = convertVerstings(parseFloat(user.vesting_shares.split(" ")[0]));
     log.debug(userid + " gests " + ret);
     return ret.toFixed(3);
@@ -221,3 +225,13 @@ async function createSavepoint(balances) {
 }
 
 module.exports.createSavepoint = createSavepoint;
+
+module.exports.getUserBalance = async function(userid) {
+    let blist = await golosjs.api.getAccountBalancesAsync(userid, []);
+    let balance = {};
+    for(let b of blist) {
+        let sp = b.split(" ");
+        balance[sp[1]] = parseFloat(sp[0]);
+    }
+    return balance;
+}

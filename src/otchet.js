@@ -5,7 +5,7 @@ var Scanner = require("./scanner");
 var options = require("./options");
 var fs = require("fs");
 
-const REPORT_DURATION = 1000 * 60 * 60 * 24 * 7; //one week
+const REPORT_DURATION = 1000 * 60 * 60 * 24 * 14; //one week
 const LIST_COUNT = 140;
 
 var USER_GESTS = {};
@@ -321,6 +321,7 @@ async function printMostPayedPosts(stats, price) {
 }
 
 async function doReport() {
+    log.debug("getting golos price");
     let price = await golos.getGolosPrice();
     log.debug("GOLOS price = " + price.toFixed(3));
 
